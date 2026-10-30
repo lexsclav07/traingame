@@ -1,7 +1,8 @@
 extends SceneTree
 ## Flexible screenshot tool for graphics work.
 ## usage: -s res://tests/shot.gd -- <a4|mariyung> <cold|prep|ready> <day|dusk|night> <clear|rain> <quality 0-3> <prefix> <shots>
-## shots: comma list of  cab:<view>:<yaw>:<pitch>  |  ext:<yaw>:<pitch>:<dist>  |  line  |  move:<seconds>  (drive at speed first)
+## shots: comma list of  cab:<view>:<yaw>:<pitch>  |  ext:<yaw>:<pitch>:<dist>  |  line  |
+##        free:<s>:<lateral>:<height>:<yaw deg>:<pitch deg>  |  move:<metres>:<speed>
 var game: Node
 var shots: Array = []
 var idx := 0
@@ -66,6 +67,13 @@ func _setup(spec: String) -> void:
 			rig.ext_dist = float(p[3]) if p.size() > 3 else 26.0
 		"line":
 			rig.set_lineside()
+		"free":
+			# free:<s>:<lateral>:<height>:<yaw deg>:<pitch deg> relative to the track
+			rig.mode = "free"
+			var f: Transform3D = game.track.flat_frame_at(float(p[1]), float(p[2]))
+			var b: Basis = f.basis * Basis.from_euler(Vector3(deg_to_rad(float(p[5])), deg_to_rad(float(p[4])), 0))
+			rig.cam.fov = 62.0
+			rig.cam.global_transform = Transform3D(b, f.origin + Vector3.UP * float(p[3]))
 		"move":
 			# jump the train along the line and give it speed (no rendering needed)
 			var secs := float(p[1])
