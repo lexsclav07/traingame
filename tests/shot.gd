@@ -54,7 +54,7 @@ func _setup(spec: String) -> void:
 	var rig = game.rig
 	rig.picking = false
 	rig.highlight.visible = false
-	settle = 5
+	settle = int(OS.get_environment("SETTLE")) if OS.get_environment("SETTLE") != "" else 5
 	match p[0]:
 		"cab":
 			rig.set_view(int(p[1]))

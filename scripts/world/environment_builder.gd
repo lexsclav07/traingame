@@ -65,15 +65,8 @@ func build(parent: Node3D, route: Dictionary, time_of_day: String, weather: Stri
 		env.volumetric_fog_ambient_inject = 0.4
 		env.volumetric_fog_sky_affect = 0.0
 	we.environment = env
-	# eye adaptation: stepping into a dim cab from bright daylight (Forward+ only)
-	if forward_plus and q >= 2:
-		var ca := CameraAttributesPractical.new()
-		ca.auto_exposure_enabled = true
-		ca.auto_exposure_scale = 0.35
-		ca.auto_exposure_speed = 0.6
-		ca.auto_exposure_min_sensitivity = 60.0
-		ca.auto_exposure_max_sensitivity = 400.0
-		we.camera_attributes = ca
+	# Fixed exposure: auto exposure over-brightened daylight scenes; the cabs
+	# get their brightness from daylight fill lights instead.
 	parent.add_child(we)
 
 	sun = DirectionalLight3D.new()
@@ -150,7 +143,7 @@ func build(parent: Node3D, route: Dictionary, time_of_day: String, weather: Stri
 	env.fog_sun_scatter = 0.25 if not night else 0.0
 	if forward_plus and env.volumetric_fog_enabled:
 		# a little ground haze for depth and light shafts; more in rain
-		env.volumetric_fog_density = 0.0035 if rainy else (0.0012 if time_of_day == "dusk" else 0.0006)
+		env.volumetric_fog_density = 0.0035 if rainy else (0.001 if time_of_day == "dusk" else 0.0003)
 		env.volumetric_fog_albedo = p["fog"]
 
 
