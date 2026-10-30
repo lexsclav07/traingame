@@ -1,0 +1,19 @@
+# Godot 4
+.godot/
+/android/
+*.translation
+export.cfg
+export_credentials.cfg
+
+# Builds
+/build/
+*.x86_64
+*.exe
+*.pck
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.tmp
+.vscode/
+.idea/
