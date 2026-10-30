@@ -81,6 +81,27 @@ func _process(_delta: float) -> void:
 		budget -= 1
 
 
+## Same field layout and pasture/arable choice as the terrain shader.
+func _grassy_field(x: float, z: float) -> bool:
+	var fs := TerrainBuilder.FIELD_SIZE
+	var fp := terrain.field_rot(Vector2(x, z))
+	var cell := Vector2(floor(fp.x / fs.x), floor(fp.y / fs.y))
+	if _hash12(cell + Vector2(17.0, 17.0)) < 0.5:
+		return true
+	var local := fp - Vector2(cell.x * fs.x, cell.y * fs.y)
+	var edge := minf(minf(local.x, fs.x - local.x), minf(local.y, fs.y - local.y))
+	return edge < 6.0
+
+
+static func _hash12(p: Vector2) -> float:
+	var p3 := Vector3(p.x, p.y, p.x) * 0.1031
+	p3 = Vector3(p3.x - floor(p3.x), p3.y - floor(p3.y), p3.z - floor(p3.z))
+	var dd := p3.dot(Vector3(p3.y, p3.z, p3.x) + Vector3.ONE * 33.33)
+	p3 += Vector3.ONE * dd
+	var v := (p3.x + p3.y) * p3.z
+	return v - floor(v)
+
+
 func _build(key: Vector2i) -> MultiMeshInstance3D:
 	var mmi: MultiMeshInstance3D
 	if pool.is_empty():
@@ -97,6 +118,7 @@ func _build(key: Vector2i) -> MultiMeshInstance3D:
 	mmi.visible = true
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(key)
+	var fields := terrain.theme != "nsw"
 	var mm := mmi.multimesh
 	var used := 0
 	for i in range(per_tile):
@@ -109,6 +131,8 @@ func _build(key: Vector2i) -> MultiMeshInstance3D:
 			continue                    # ballast
 		if d < 7.0 and rng.randf() < 0.75:
 			continue                    # sparse on the cess
+		if fields and d > 22.0 and not _grassy_field(x, z):
+			continue                    # stubble and plough: grass only on the headlands
 		var h := terrain.shaped(x, z, d, terrain.q_h, terrain.q_br)
 		if h < terrain.water_y + 0.25:
 			continue

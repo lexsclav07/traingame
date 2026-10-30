@@ -6,8 +6,9 @@ Made by **Lex Sclavos**.
 
 | Mariyung cab | LNER A4 footplate |
 |---|---|
-| ![Mariyung cab](docs/screenshots/mariyung_cab.png) | ![A4 footplate](docs/screenshots/a4_cab.png) |
-| ![Mariyung outside](docs/screenshots/mariyung_outside.png) | ![Mallard outside](docs/screenshots/a4_outside.png) |
+| ![Mariyung cab](docs/screenshots/mariyung_cab.jpg) | ![A4 footplate](docs/screenshots/a4_cab.jpg) |
+| ![Mariyung at Wattle Gully](docs/screenshots/mariyung_outside.jpg) | ![Mallard at Corby Glen](docs/screenshots/a4_outside.jpg) |
+| ![Wattle Gully station](docs/screenshots/nsw_station.jpg) | ![Mallard at dusk](docs/screenshots/a4_dusk.jpg) |
 
 ## The trains
 
