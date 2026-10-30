@@ -17,21 +17,25 @@ func build(parent: Node3D, t: Track, ter: TerrainBuilder, quality: int) -> void:
 	var root := Node3D.new()
 	root.name = "Track"
 	parent.add_child(root)
-	var rail_mat := MU.mat(Color(0.36, 0.25, 0.18), 0.85, 0.35, "rail_side")
-	var head_mat := MU.mat(Color(0.82, 0.82, 0.84), 0.22, 0.95, "rail_head")
-	var ballast_mat := MU.noise_mat(Color(0.36, 0.36, 0.37) if theme == "nsw" else Color(0.33, 0.31, 0.28), 0.25, 3.0, 0.98, "ballast_" + theme)
+	var rail_mat := TX.pbr("rust_albedo", "", Color(0.8, 0.72, 0.68), 0.78, 0.35, Vector3.ONE * 2.0, true, 1.0, "rail_side")
+	var head_mat := TX.metal(Color(0.8, 0.8, 0.82), 0.16, false, 1.0, "rail_head")
+	var ballast_tint := Color(0.86, 0.87, 0.9) if theme == "nsw" else Color(0.8, 0.75, 0.68)
+	var ballast_mat := TX.pbr("ballast_albedo", "ballast_normal", ballast_tint, 0.95, 0.0, Vector3.ONE * 0.42, true, 1.5, "ballast_" + theme)
 	var form_mat := ter.terrain_material
 	var sleeper_mesh := BoxMesh.new()
 	var sleeper_mat: Material
 	if theme == "nsw":
 		sleeper_mesh.size = Vector3(2.5, 0.2, 0.26)
-		sleeper_mat = MU.mat(Color(0.5, 0.49, 0.47), 0.9)
+		sleeper_mat = TX.pbr("concrete_albedo", "concrete_normal", Color(0.8, 0.79, 0.76), 0.9, 0.0, Vector3.ONE * 1.4, false, 1.0, "sleeper_conc")
 	else:
 		sleeper_mesh.size = Vector3(2.6, 0.13, 0.25)
-		sleeper_mat = MU.mat(Color(0.24, 0.18, 0.13), 0.95)
+		sleeper_mat = TX.pbr("timber_albedo", "timber_normal", Color(1, 1, 1), 0.92, 0.0, Vector3(0.6, 2.0, 2.0), false, 1.2, "sleeper_timber")
 	var chair_mesh := BoxMesh.new()
 	chair_mesh.size = Vector3(0.17, 0.09, 0.32)
-	var clip_mat := MU.mat(Color(0.2, 0.18, 0.17), 0.7, 0.4)
+	var clip_mat := TX.painted(Color(0.2, 0.18, 0.17), 0.65, 0.5, "grime", 3.0)
+	var pad_mesh := BoxMesh.new()
+	pad_mesh.size = Vector3(0.2, 0.012, 0.22)
+	var pad_mat := MU.mat(Color(0.06, 0.06, 0.06), 0.9)
 	var rail_profile := _rail_profile()
 	var head_profile := PackedVector2Array([Vector2(-0.034, 0.0015), Vector2(0.034, 0.0015)])
 	var spacing: float = track.route["sleeper_spacing"]
@@ -71,17 +75,26 @@ func build(parent: Node3D, t: Track, ter: TerrainBuilder, quality: int) -> void:
 		# ballast (or bridge deck)
 		var bst := SurfaceTool.new()
 		bst.begin(Mesh.PRIMITIVE_TRIANGLES)
-		MU.extrude(PackedVector2Array([Vector2(-2.7, -0.6), Vector2(-1.85, -0.22), Vector2(1.85, -0.22), Vector2(2.7, -0.6)]), frames_c, bst)
+		MU.extrude(PackedVector2Array([Vector2(-2.95, -0.63), Vector2(-2.3, -0.36), Vector2(-1.75, -0.215),
+			Vector2(0.0, -0.205), Vector2(1.75, -0.215), Vector2(2.3, -0.36), Vector2(2.95, -0.63)]), frames_c, bst)
 		bst.generate_normals()
 		_add_mesh(node, bst.commit(), ballast_mat, "Ballast")
 		_formation(node, s0, s1, form_mat)
 		# sleepers (+ cast-iron chairs on the 1930s line)
 		var sl := []
 		var ch := []
+		var pads := []
 		var ss := ceilf(s0 / spacing) * spacing
+		var srng := RandomNumberGenerator.new()
+		srng.seed = c
 		while ss < s1:
 			var f := track.frame_at(ss)
-			sl.append(f.translated_local(Vector3(0, -0.255 if theme == "nsw" else -0.225, 0)))
+			# timber sleepers are never quite square or evenly spaced
+			var jit := Basis(Vector3.UP, srng.randf_range(-0.02, 0.02)) if theme == "ecml" else Basis()
+			sl.append(Transform3D(f.basis * jit, f.origin).translated_local(Vector3(0, -0.255 if theme == "nsw" else -0.225, srng.randf_range(-0.02, 0.02) if theme == "ecml" else 0.0)))
+			if theme == "nsw":
+				pads.append(f.translated_local(Vector3(-RAIL_X, -0.158, 0)))
+				pads.append(f.translated_local(Vector3(RAIL_X, -0.158, 0)))
 			if theme == "ecml":
 				ch.append(f.translated_local(Vector3(-RAIL_X, -0.13, 0)))
 				ch.append(f.translated_local(Vector3(RAIL_X, -0.13, 0)))
@@ -93,6 +106,10 @@ func build(parent: Node3D, t: Track, ter: TerrainBuilder, quality: int) -> void:
 		mmi.visibility_range_end = 900.0 if quality > 0 else 450.0
 		var cmi := _multimesh(node, chair_mesh, clip_mat, ch, "Chairs")
 		cmi.visibility_range_end = 300.0
+		if not pads.is_empty():
+			var pmi := _multimesh(node, pad_mesh, pad_mat, pads, "Pads")
+			pmi.visibility_range_end = 150.0
+			pmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_bridges(root)
 	_troughs(root)
 
@@ -184,8 +201,8 @@ func _shoulder_point(p: Vector3, th: float, d: float) -> Vector3:
 
 
 func _bridges(root: Node3D) -> void:
-	var steel := MU.mat(Color(0.25, 0.27, 0.29) if theme == "nsw" else Color(0.18, 0.18, 0.2), 0.6, 0.6)
-	var conc := MU.noise_mat(Color(0.66, 0.62, 0.55) if theme == "nsw" else Color(0.55, 0.42, 0.33), 0.1, 0.5, 0.95, "pier_" + theme)
+	var steel := TX.painted(Color(0.3, 0.32, 0.33) if theme == "nsw" else Color(0.16, 0.16, 0.17), 0.55, 0.5, "grime", 0.25)
+	var conc := TX.pbr("concrete_albedo", "concrete_normal", Color(0.85, 0.82, 0.76), 0.9, 0.0, Vector3.ONE * 0.35, true, 1.0, "pier_nsw") if theme == "nsw" else TX.pbr("brick_albedo", "brick_normal", Color(0.9, 0.85, 0.8), 0.9, 0.0, Vector3.ONE * 0.6, true, 1.0, "pier_ecml")
 	var i := 0
 	while i < track.n:
 		if terrain.bridge[i] == 1:
@@ -226,8 +243,8 @@ func _bridges(root: Node3D) -> void:
 
 
 func _troughs(root: Node3D) -> void:
-	var water := MU.mat(Color(0.3, 0.4, 0.45), 0.05, 0.4)
-	var steel := MU.mat(Color(0.28, 0.26, 0.24), 0.7, 0.5)
+	var water := MU.mat(Color(0.25, 0.32, 0.34), 0.03, 0.5)
+	var steel := TX.painted(Color(0.24, 0.22, 0.2), 0.7, 0.5, "grime", 1.0)
 	for tr in track.route.get("troughs", []):
 		var frames := []
 		var s: float = tr[0]
