@@ -16,17 +16,20 @@ var desk_light: OmniLight3D
 var cctv_cam: Camera3D
 var cctv_vp: SubViewport
 var _cctv_t := 0.0
+var ceiling_lamp: StandardMaterial3D
 
 
 func build(cab_root: Node3D) -> void:
 	cab_root.add_child(self)
-	var wall := MU.mat(Color(0.82, 0.83, 0.84), 0.6, 0.0, "nif_cab_wall")
-	var dark := MU.mat(Color(0.16, 0.17, 0.19), 0.55, 0.1, "nif_cab_dark")
-	var desk_mat := MU.mat(Color(0.2, 0.2, 0.21), 0.8, 0.05, "nif_desk")
-	var floor_mat := MU.noise_mat(Color(0.2, 0.2, 0.22), 0.05, 3.0, 0.9, "nif_floor")
+	var wall := TX.painted(Color(0.8, 0.805, 0.81), 0.55, 0.0, "paint_wear", 2.0, 0.0, "nif_cab_wall")
+	var dark := TX.plastic(Color(0.11, 0.115, 0.125), 0.5, 8.0, "nif_cab_dark")
+	var desk_mat := TX.plastic(Color(0.19, 0.195, 0.205), 0.62, 8.0, "nif_desk")
+	var floor_mat := TX.pbr("rubber_albedo", "rubber_normal", Color(0.8, 0.8, 0.85), 0.85, 0.0, Vector3.ONE * 1.6, false, 1.0, "nif_floor")
+	var seat_mat := TX.pbr("fabric_albedo", "fabric_normal", Color(0.22, 0.3, 0.5), 0.95, 0.0, Vector3.ONE * 3.0, false, 1.0, "nif_seat")
 	var glass := MU.glass(Color(0.75, 0.8, 0.82, 0.07))
-	var steel := MU.mat(Color(0.6, 0.6, 0.62), 0.35, 0.8)
-	var black := MU.mat(Color(0.05, 0.05, 0.05), 0.5)
+	var steel := TX.metal(Color(0.62, 0.62, 0.64), 0.35, true, 6.0, "nif_steel")
+	var black := TX.plastic(Color(0.04, 0.04, 0.045), 0.55, 8.0, "nif_black")
+	var rubber := MU.mat(Color(0.03, 0.03, 0.03), 0.8, 0.0, "nif_rubber")
 
 	# ------------------------------------------------------------ shell
 	MU.box(self, Vector3(2.9, 0.05, 2.0), Vector3(0, FLOOR - 0.025, 1.55), floor_mat)
@@ -198,9 +201,8 @@ func build(cab_root: Node3D) -> void:
 		t.name = m[0]
 
 	# ---------------------------------------------------------- seat & lights
-	MU.box(self, Vector3(0.55, 0.12, 0.5), Vector3(0, FLOOR + 0.55, 1.95), MU.mat(Color(0.15, 0.2, 0.32), 0.85))
-	MU.box(self, Vector3(0.55, 0.7, 0.1), Vector3(0, FLOOR + 0.95, 2.22), MU.mat(Color(0.15, 0.2, 0.32), 0.85), Vector3(-8, 0, 0))
-	MU.cyl(self, 0.05, 0.5, Vector3(0, FLOOR + 0.25, 1.95), steel, Vector3.ZERO, 8)
+	_seat(seat_mat, dark, steel)
+	_details(wall, dark, black, rubber, steel, glass)
 	cab_light = OmniLight3D.new()
 	cab_light.light_color = Color(1.0, 0.97, 0.9)
 	cab_light.omni_range = 3.0
@@ -213,6 +215,8 @@ func build(cab_root: Node3D) -> void:
 	desk_light.light_energy = 0.0
 	add_child(desk_light)
 	desk_light.position = Vector3(0, 2.45, 1.2)
+	add_fill(Vector3(0, 3.5, 0.95), 3.6, 2.2, Color(1.0, 0.97, 0.92))
+	add_fill(Vector3(0, 2.0, 1.9), 2.4, 0.9, Color(1.0, 0.96, 0.9))
 
 	# ---------------------------------------------------------------- views
 	add_view("Driver (seated)", Vector3(0.0, 2.55, 1.88), 0.0, -9.0)
@@ -220,6 +224,96 @@ func build(cab_root: Node3D) -> void:
 	add_view("Standing", Vector3(0.45, 2.95, 1.7), 8.0, -16.0)
 	add_view("Side window (left)", Vector3(-1.05, 2.75, 1.75), 72.0, -8.0)
 	add_view("Side window (right)", Vector3(1.05, 2.75, 1.75), -72.0, -8.0)
+
+
+## Driver's seat: moulded cushion and backrest in moquette, headrest,
+## armrests, gas-strut pedestal on a swivel base.
+func _seat(fabric: Material, dark: Material, steel: Material) -> void:
+	var z0 := 1.95
+	var cush := []
+	for i in range(6):
+		var t := float(i) / 5.0
+		var z := z0 - 0.26 + t * 0.52
+		var bulge := sin(t * PI) * 0.025
+		cush.append(MU.rounded_ring(0.27 + bulge * 0.5, FLOOR + 0.5, FLOOR + 0.6 + bulge, 0.05, z, 3))
+	add_child(MU.loft(cush, fabric))
+	# backrest tilted back ~10 degrees
+	var back := Node3D.new()
+	add_child(back)
+	back.position = Vector3(0, FLOOR + 0.62, z0 + 0.25)
+	back.rotation_degrees = Vector3(10, 0, 0)
+	var br := []
+	for i in range(5):
+		var t := float(i) / 4.0
+		var y := t * 0.66
+		var hw := 0.26 - 0.03 * t + sin(t * PI) * 0.01
+		var r := PackedVector3Array()
+		for k in range(16):
+			var a := TAU * k / 16.0
+			r.append(Vector3(cos(a) * hw, y, 0.035 - sin(a) * (0.06 + 0.012 * sin(t * PI))))
+		br.append(r)
+	var bm := MU.loft(br, fabric)
+	back.add_child(bm)
+	MU.box(back, Vector3(0.3, 0.18, 0.1), Vector3(0, 0.8, 0.06), fabric)
+	for sx in [-1.0, 1.0]:
+		MU.box(back, Vector3(0.025, 0.12, 0.025), Vector3(sx * 0.08, 0.7, 0.06), steel)
+		# armrests
+		MU.box(self, Vector3(0.07, 0.05, 0.36), Vector3(sx * 0.33, FLOOR + 0.82, z0 + 0.02), dark)
+		MU.box(self, Vector3(0.04, 0.24, 0.04), Vector3(sx * 0.33, FLOOR + 0.7, z0 + 0.17), dark)
+	MU.box(back, Vector3(0.5, 0.6, 0.02), Vector3(0, 0.32, 0.105), dark)
+	# pedestal
+	MU.cyl(self, 0.045, 0.32, Vector3(0, FLOOR + 0.33, z0), steel, Vector3.ZERO, 10)
+	MU.cyl(self, 0.07, 0.18, Vector3(0, FLOOR + 0.1, z0), dark, Vector3.ZERO, 10)
+	MU.box(self, Vector3(0.5, 0.03, 0.42), Vector3(0, FLOOR + 0.475, z0), dark)
+	for k in range(5):
+		var a := TAU * k / 5.0
+		MU.box(self, Vector3(0.05, 0.03, 0.28), Vector3(sin(a) * 0.14, FLOOR + 0.02, z0 + cos(a) * 0.14), dark, Vector3(0, rad_to_deg(a), 0))
+
+
+## Non-interactive fittings that make the cab read as a real place.
+func _details(wall: Material, dark: Material, black: Material, rubber: Material, steel: Material, glass: Material) -> void:
+	# padded edge along the driver's side of the desk and a footrest
+	MU.cyl(self, 0.028, 2.6, Vector3(0, 1.952, 1.535), black, Vector3(0, 0, 90), 12)
+	MU.cyl(self, 0.018, 0.7, Vector3(0, FLOOR + 0.16, 1.2), steel, Vector3(0, 0, 90), 8)    # footrest bar
+	MU.box(self, Vector3(0.7, 0.02, 0.18), Vector3(0, FLOOR + 0.13, 1.24), black, Vector3(-20, 0, 0))
+	# roller sun blind across the top of the windscreen, pulled down a little
+	MU.cyl(self, 0.035, 2.5, Vector3(0, 3.76, 1.56), dark, Vector3(0, 0, 90), 12)
+	MU.box(self, Vector3(2.4, 0.16, 0.004), Vector3(0, 3.68, 1.45), MU.glass(Color(0.05, 0.05, 0.06, 0.72)), Vector3(29.7, 0, 0))
+	MU.box(self, Vector3(2.4, 0.015, 0.012), Vector3(0, 3.6, 1.405), black, Vector3(29.7, 0, 0))
+	# rubber seals round the windscreen and side windows
+	for sx in [-1.0, 1.0]:
+		var x: float = sx * 1.41
+		for zz in [1.25, 2.2]:
+			MU.box(self, Vector3(0.025, 0.82, 0.03), Vector3(x, 2.85, zz), rubber)
+		for yy in [2.45, 3.25]:
+			MU.box(self, Vector3(0.025, 0.03, 0.98), Vector3(x, yy, 1.725), rubber)
+		# grab handle by each side window
+		MU.cyl(self, 0.012, 0.35, Vector3(sx * 1.38, 2.85, 2.32), steel, Vector3.ZERO, 8)
+	# ceiling light panel and air-conditioning diffusers
+	ceiling_lamp = MU.lamp(Color(1.0, 0.97, 0.9), 0.0)
+	ceiling_lamp.albedo_color = Color(0.85, 0.85, 0.83)
+	MU.box(self, Vector3(1.1, 0.02, 0.4), Vector3(0, 3.945, 2.1), ceiling_lamp)
+	MU.box(self, Vector3(1.16, 0.015, 0.46), Vector3(0, 3.95, 2.1), dark)
+	for sx in [-1.0, 1.0]:
+		MU.box(self, Vector3(0.5, 0.012, 0.12), Vector3(sx * 0.95, 3.945, 2.2), dark)
+		for k in range(5):
+			MU.box(self, Vector3(0.46, 0.006, 0.008), Vector3(sx * 0.95, 3.937, 2.16 + k * 0.02), black)
+	# rear wall: saloon door window and handle, fire extinguisher, notice holder
+	MU.box(self, Vector3(0.4, 0.5, 0.004), Vector3(0.75, FLOOR + 1.55, 2.528), MU.mat(Color(0.04, 0.045, 0.05), 0.05, 0.0, "nif_door_glass"))
+	MU.box(self, Vector3(0.46, 0.56, 0.006), Vector3(0.75, FLOOR + 1.55, 2.531), rubber)
+	MU.box(self, Vector3(0.03, 0.22, 0.04), Vector3(0.45, FLOOR + 1.05, 2.52), steel)
+	MU.cyl(self, 0.075, 0.48, Vector3(1.22, FLOOR + 0.4, 2.44), MU.mat(Color(0.75, 0.06, 0.04), 0.35, 0.1, "extinguisher"), Vector3.ZERO, 14)
+	MU.cyl(self, 0.03, 0.08, Vector3(1.22, FLOOR + 0.68, 2.44), black, Vector3.ZERO, 8)
+	MU.box(self, Vector3(0.1, 0.03, 0.08), Vector3(1.22, FLOOR + 0.6, 2.5), steel)
+	MU.box(self, Vector3(0.3, 0.42, 0.015), Vector3(1.05, FLOOR + 1.45, 2.54), MU.mat(Color(0.92, 0.92, 0.88), 0.7))
+	text("TRAIN NOTICES", self, Vector3(1.05, FLOOR + 1.62, 2.53), Vector3(0, 180, 0), 0.0003, Color(0.1, 0.1, 0.1))
+	# radio handset on its cradle (right wing)
+	MU.box(self, Vector3(0.12, 0.05, 0.22), Vector3(1.18, FLOOR + 0.75, 1.42), black)
+	MU.box(self, Vector3(0.05, 0.045, 0.2), Vector3(1.18, FLOOR + 0.79, 1.42), dark)
+	# side walls under the windows: moulded trim with a coat hook
+	for sx in [-1.0, 1.0]:
+		MU.box(self, Vector3(0.04, 0.06, 1.9), Vector3(sx * 1.4, FLOOR + 1.2, 1.6), dark)
+	MU.cyl(self, 0.01, 0.06, Vector3(-1.38, 3.2, 2.45), steel, Vector3(0, 0, 90), 6)
 
 
 func _cctv(parent: Node3D) -> void:
@@ -280,6 +374,7 @@ func update_visuals(sim: MariyungSim, delta: float) -> void:
 		if m.emission_energy_multiplier > 0.0 and not flashing.has(id):
 			m.emission_energy_multiplier = 1.2 + desk_level * 0.5
 	cab_light.light_energy = 1.2 if (val("cab_light") > 0.5 and pw) else 0.0
+	ceiling_lamp.emission_energy_multiplier = 2.5 if cab_light.light_energy > 0.0 else 0.0
 	desk_light.light_energy = desk_level * 0.15 if sim.cab_active else 0.0
 	# wipers sweep across the glass
 	for i in range(wipers.size()):

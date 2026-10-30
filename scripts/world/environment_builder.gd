@@ -142,7 +142,9 @@ func build(parent: Node3D, route: Dictionary, time_of_day: String, weather: Stri
 	sky_mat.set_shader_parameter("cloud_cover", p["cover"])
 	sky_mat.set_shader_parameter("sky_energy", p["energy"])
 	env.ambient_light_energy = p["amb"]
-	env.ambient_light_sky_contribution = 0.85
+	# part of the ambient is warm light bounced off the ground, not just blue sky
+	env.ambient_light_sky_contribution = 0.7
+	env.ambient_light_color = (p["ground"] as Color).lerp(Color(0.6, 0.58, 0.52), 0.5) * (0.15 if night else 1.0)
 	env.fog_light_color = p["fog"]
 	env.fog_density = p["fog_d"]
 	env.fog_sun_scatter = 0.25 if not night else 0.0

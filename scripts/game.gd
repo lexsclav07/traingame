@@ -45,6 +45,7 @@ func _build() -> void:
 	TrackBuilder.new().build(self, track, terrain, q)
 	scenery = SceneryBuilder.new()
 	scenery.build(self, track, terrain, q)
+	_apply_render_quality(q)
 	envb = EnvironmentBuilder.new()
 	envb.build(self, track.route, gs.time_of_day, gs.weather, q)
 	scenery.set_night_lights(gs.time_of_day != "day")
@@ -59,6 +60,12 @@ func _build() -> void:
 	else:
 		_build_mariyung()
 	train.update_visuals()
+	var daylight: float = {"day": 1.0, "dusk": 0.35, "night": 0.0}.get(gs.time_of_day, 1.0)
+	if gs.weather == "rain":
+		daylight *= 0.55
+	if q >= 3 and RenderingServer.get_current_rendering_method() == "forward_plus":
+		daylight *= 0.6      # SDFGI already bounces some light in
+	cab.set_daylight(daylight)
 	train.derailed_signal.connect(func(r): hud.fail(r + "\n\nTake curves at or below the line speed shown on the lineside boards."))
 	sim.message.connect(_on_message)
 	rig = CameraRig.new()
@@ -134,10 +141,15 @@ func _build_a4() -> void:
 	effects = Effects.new()
 	add_child(effects)
 	effects.setup(loco)
-	# express headcode oil lamps are lit at dusk and night
+	# express headcode oil lamps are lit at dusk and night, and the
+	# compartment lights glow warm through the coach windows
 	if gs.time_of_day != "day":
 		for lm in loco.head_lamps:
 			(lm as StandardMaterial3D).emission_energy_multiplier = 2.5
+		var cw := MU.mat(Color(0.05, 0.055, 0.06), 0.04, 0.0, "coach_win")
+		cw.emission_enabled = true
+		cw.emission = Color(1.0, 0.78, 0.48)
+		cw.emission_energy_multiplier = 0.8
 
 
 func _on_message(t: String, kind: String) -> void:
@@ -255,3 +267,20 @@ func _help_text() -> String:
 1  cycle cab positions    2  second position    3  outside (drag to orbit, scroll to zoom)    4  lineside
 Right mouse (hold)  look around    Mouse wheel  adjust the control under the cursor (or zoom)
 + / -  time acceleration (useful while raising steam or charging air)    F2 start-up checklist    F3 details    Esc  pause"""
+
+
+## Anti-aliasing, shadow resolution and LOD detail for the chosen quality.
+func _apply_render_quality(q: int) -> void:
+	var vp := get_viewport()
+	var compat := RenderingServer.get_current_rendering_method() == "gl_compatibility"
+	vp.msaa_3d = [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X, Viewport.MSAA_4X][q]
+	if compat:
+		vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if q == 0 else Viewport.SCREEN_SPACE_AA_DISABLED
+	else:
+		vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if q < 3 else Viewport.SCREEN_SPACE_AA_SMAA
+	vp.mesh_lod_threshold = [2.0, 1.5, 1.0, 0.6][q]
+	RenderingServer.directional_shadow_atlas_set_size([2048, 4096, 4096, 8192][q], true)
+	RenderingServer.directional_soft_shadow_filter_set_quality([RenderingServer.SHADOW_QUALITY_SOFT_VERY_LOW, RenderingServer.SHADOW_QUALITY_SOFT_LOW,
+		RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, RenderingServer.SHADOW_QUALITY_SOFT_HIGH][q])
+	RenderingServer.positional_soft_shadow_filter_set_quality([RenderingServer.SHADOW_QUALITY_SOFT_VERY_LOW, RenderingServer.SHADOW_QUALITY_SOFT_LOW,
+		RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, RenderingServer.SHADOW_QUALITY_SOFT_HIGH][q])

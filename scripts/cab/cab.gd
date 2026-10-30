@@ -12,6 +12,31 @@ var view_points := {}   # name -> Transform3D (local)
 var view_order: Array[String] = []
 var flashing := {}      # lamp id -> period (s)
 var _t := 0.0
+## soft daylight bouncing in through the windows (no GI in most render modes)
+var fill_lights: Array[Light3D] = []
+var fill_energy: Array[float] = []
+
+
+## Add a shadowless fill light; its energy is scaled by set_daylight().
+func add_fill(pos: Vector3, rng: float, energy: float, col := Color(1.0, 0.97, 0.92)) -> OmniLight3D:
+	var l := OmniLight3D.new()
+	l.light_color = col
+	l.omni_range = rng
+	l.omni_attenuation = 0.8
+	l.shadow_enabled = false
+	l.light_specular = 0.15
+	l.light_energy = 0.0
+	add_child(l)
+	l.position = pos
+	fill_lights.append(l)
+	fill_energy.append(energy)
+	return l
+
+
+## 1 = full daylight, 0 = night.
+func set_daylight(level: float) -> void:
+	for i in range(fill_lights.size()):
+		fill_lights[i].light_energy = fill_energy[i] * level
 
 
 func add_view(nm: String, pos: Vector3, yaw_deg := 0.0, pitch_deg := -8.0) -> void:

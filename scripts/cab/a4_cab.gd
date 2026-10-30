@@ -20,14 +20,16 @@ var scoop_ind: Label3D
 
 func build(cab_root: Node3D) -> void:
 	cab_root.add_child(self)
-	var blue := MU.mat(VehicleModels.garter_blue, 0.3, 0.15, "garter_blue_cab")
-	var lining := MU.mat(Color(0.55, 0.47, 0.36), 0.8, 0.0, "a4_cab_lining")
-	var black := MU.mat(Color(0.05, 0.05, 0.055), 0.45, 0.3, "backhead")
-	var brass := MU.mat(Color(0.78, 0.6, 0.28), 0.25, 0.9, "brass")
-	var copper := MU.mat(Color(0.72, 0.42, 0.26), 0.3, 0.85, "copper")
-	var steel := MU.mat(Color(0.55, 0.55, 0.57), 0.3, 0.85, "cab_steel")
-	var wood := MU.noise_mat(Color(0.42, 0.3, 0.2), 0.12, 2.0, 0.85, "floorboards")
-	var red := MU.mat(Color(0.6, 0.08, 0.06), 0.4, 0.2, "valve_red")
+	var blue := TX.painted(VehicleModels.garter_blue, 0.32, 0.1, "paint_wear", 1.5, 0.4, "garter_blue_cab")
+	var lining := TX.painted(Color(0.6, 0.53, 0.41), 0.6, 0.0, "paint_wear", 1.5, 0.0, "a4_cab_lining")
+	var black := TX.pbr("heatpaint_albedo", "plastic_normal", Color(0.075, 0.072, 0.07), 0.45, 0.25, Vector3.ONE * 1.5, false, 0.6, "backhead")
+	var brass := TX.painted(Color(0.8, 0.62, 0.3), 0.26, 1.0, "tarnish", 3.0, 0.0, "brass_t")
+	var copper := TX.painted(Color(0.76, 0.45, 0.28), 0.3, 1.0, "tarnish", 3.0, 0.0, "copper_t")
+	var steel := TX.metal(Color(0.6, 0.6, 0.62), 0.32, true, 4.0, "a4_steel")
+	var wood := TX.pbr("floorboards_albedo", "floorboards_normal", Color.WHITE, 0.85, 0.0, Vector3.ONE * 0.83, false, 1.0, "a4_floor")
+	var red := TX.painted(Color(0.6, 0.08, 0.06), 0.4, 0.2, "paint_wear", 4.0, 0.0, "valve_red")
+	var leather := TX.pbr("fabric_albedo", "plastic_normal", Color(0.22, 0.12, 0.07), 0.55, 0.0, Vector3.ONE * 2.0, false, 1.0, "a4_leather")
+	var coal := TX.pbr("coal_albedo", "coal_normal", Color.WHITE, 0.55, 0.0, Vector3.ONE * 2.0, false, 1.0, "coal_heap")
 	var glass := MU.glass(Color(0.75, 0.82, 0.85, 0.12))
 
 	# ------------------------------------------------------------ structure
@@ -54,9 +56,8 @@ func build(cab_root: Node3D) -> void:
 		num.outline_modulate = Color(0.25, 0.25, 0.28)
 		# wind deflector glass outside the window
 		MU.box(self, Vector3(0.01, 0.6, 0.3), Vector3(sx * 1.43, 3.0, 11.1), glass, Vector3(0, sx * 25.0, 0))
-	MU.box(self, Vector3(2.76, 0.06, 3.5), Vector3(0, 3.98, 12.3), blue)
-	MU.box(self, Vector3(2.6, 0.02, 3.4), Vector3(0, 3.94, 12.3), lining)
-	MU.box(self, Vector3(0.5, 0.12, 0.6), Vector3(0, 4.05, 12.6), blue)          # roof ventilator
+	_roof(blue, lining)
+	MU.box(self, Vector3(0.5, 0.1, 0.6), Vector3(0, 4.18, 12.6), blue)          # roof ventilator
 
 	# --------------------------------------------------------------- backhead
 	var bh := frame(self, Vector3(0, 0, BACKHEAD_Z), Vector3.ZERO)
@@ -86,6 +87,9 @@ func build(cab_root: Node3D) -> void:
 	# ------------------------------------------------------- firebox interior
 	firebox_mat = MU.lamp(Color(1.0, 0.45, 0.15), 0.0)
 	firebox_mat.albedo_color = Color(0.25, 0.12, 0.08)
+	firebox_mat.emission_texture = TX.t("firebed")
+	firebox_mat.uv1_triplanar = true
+	firebox_mat.uv1_scale = Vector3.ONE * 0.8
 	var fb := frame(self, Vector3(0, 0, 0), Vector3.ZERO)
 	MU.box(fb, Vector3(0.05, 1.5, 1.2), Vector3(-0.92, 2.05, 10.15), firebox_mat)
 	MU.box(fb, Vector3(0.05, 1.5, 1.2), Vector3(0.92, 2.05, 10.15), firebox_mat)
@@ -96,7 +100,13 @@ func build(cab_root: Node3D) -> void:
 	var zone_pos := [Vector3(-0.45, 0, 10.45), Vector3(0.45, 0, 10.45), Vector3(-0.45, 0, 9.85), Vector3(0.45, 0, 9.85)]
 	for i in range(4):
 		var zm := MU.lamp(Color(1.0, 0.5, 0.15), 0.0)
-		zm.albedo_color = Color(0.08, 0.07, 0.07)
+		zm.albedo_color = Color(0.5, 0.45, 0.42)
+		zm.albedo_texture = TX.t("coal_albedo")
+		zm.normal_enabled = true
+		zm.normal_texture = TX.t("coal_normal")
+		zm.emission_texture = TX.t("firebed")
+		zm.uv1_triplanar = true
+		zm.uv1_scale = Vector3.ONE * (1.6 + i * 0.13)
 		var mi := MU.box(fb, Vector3(0.88, 0.1, 0.58), zone_pos[i] + Vector3(0, 1.42, 0), zm)
 		fire_zone_mats.append(zm)
 		fire_zone_meshes.append(mi)
@@ -237,16 +247,30 @@ func build(cab_root: Node3D) -> void:
 	gauge_light.light_energy = 0.0
 	add_child(gauge_light)
 	gauge_light.position = Vector3(0, 3.55, 11.1)
+	add_fill(Vector3(0, 3.6, 12.4), 3.8, 1.8)
+	add_fill(Vector3(0, 2.3, 13.3), 2.6, 0.8, Color(1.0, 0.96, 0.9))
+	_backhead_details(bh, black, brass, copper, steel)
 
 	# ------------------------------------------------- tender front & seats
 	MU.box(self, Vector3(2.6, 1.9, 0.05), Vector3(0, FLOOR + 1.15, 14.28), blue)
 	MU.box(self, Vector3(0.7, 0.55, 0.06), Vector3(0.15, 1.85, 14.26), MU.mat(Color(0.03, 0.03, 0.03), 0.9))
 	MU.box(self, Vector3(1.2, 0.04, 0.5), Vector3(0.1, FLOOR + 0.02, 14.05), steel)       # shovel plate
-	MU.box(self, Vector3(0.6, 0.25, 0.4), Vector3(0.15, 1.65, 14.45), MU.noise_mat(Color(0.06, 0.06, 0.07), 0.3, 6.0, 0.9, "coal"))
+	MU.box(self, Vector3(0.66, 0.3, 0.45), Vector3(0.15, 1.66, 14.45), coal)
 	gauge("tender_water", self, Vector3(-0.9, 2.55, 14.24), Vector3(0, 180, 0), 0.06, 0, 5000, 1000, 250, "TENDER", "gallons", [Color(0.05, 0.05, 0.05)], Color(0.95, 0.93, 0.86), 1000.0)
 	for sx in [-1.0, 1.0]:
-		MU.box(self, Vector3(0.4, 0.05, 0.35), Vector3(sx * 1.05, 2.2, 12.9), wood)
+		# tip-up seats: padded leather cushion on a hinged wooden board and bracket
+		MU.box(self, Vector3(0.42, 0.04, 0.36), Vector3(sx * 1.05, 2.19, 12.9), wood)
+		var cush := []
+		for k in range(4):
+			var t := float(k) / 3.0
+			cush.append(MU.rounded_ring(0.19, 2.21, 2.27 + sin(t * PI) * 0.015, 0.03, 12.74 + t * 0.32, 3))
+		var cm := MU.loft(cush, leather)
+		cm.position.x = sx * 1.05
+		add_child(cm)
 		MU.box(self, Vector3(0.05, 0.7, 0.05), Vector3(sx * 1.05, 1.85, 12.9), steel)
+		MU.box(self, Vector3(0.05, 0.04, 0.4), Vector3(sx * 1.05, 1.62, 12.95), steel, Vector3(35, 0, 0))
+		# handrails by the cab doorway
+		MU.cyl(self, 0.016, 0.9, Vector3(sx * 1.3, 2.6, 13.95), brass, Vector3.ZERO, 8)
 	# shovel (moves when firing)
 	shovel = Node3D.new()
 	add_child(shovel)
@@ -260,6 +284,100 @@ func build(cab_root: Node3D) -> void:
 	add_view("Look out (driver's side)", Vector3(-1.62, 3.12, 12.3), 0.0, -4.0)
 	add_view("Look out (fireman's side)", Vector3(1.62, 3.12, 12.3), 0.0, -4.0)
 	add_view("Standing (driver)", Vector3(-0.7, 3.15, 12.6), 6.0, -12.0)
+
+
+## Curved cab roof: garter blue outside, lining colour inside, with a
+## sliding ventilator.
+func _roof(outside: Material, inside: Material) -> void:
+	var st_o := SurfaceTool.new()
+	var st_i := SurfaceTool.new()
+	st_o.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st_i.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var r := 5.4           # shallow arc: 0.18 m rise over the 2.76 m width
+	var cy := 4.15 - r     # arc centre height
+	var a_max := asin(1.38 / r)
+	var n := 12
+	var z0 := 10.45
+	var z1 := 14.1
+	for i in range(n):
+		var a0 := lerpf(-a_max, a_max, float(i) / n)
+		var a1 := lerpf(-a_max, a_max, float(i + 1) / n)
+		var p0 := Vector3(sin(a0) * r, cy + cos(a0) * r, 0)
+		var p1 := Vector3(sin(a1) * r, cy + cos(a1) * r, 0)
+		var q0 := p0 + Vector3(0, 0, z0)
+		var q1 := p1 + Vector3(0, 0, z0)
+		var w0 := p0 + Vector3(0, 0, z1)
+		var w1 := p1 + Vector3(0, 0, z1)
+		# outside faces up/out, inside faces down/in
+		for v in [q0, w1, w0, q0, q1, w1]:
+			st_o.add_vertex(v)
+		for v in [q0, w0, w1, q0, w1, q1]:
+			st_i.add_vertex(v - Vector3(0, 0.03, 0))
+	st_o.generate_normals()
+	st_i.generate_normals()
+	var mo := MeshInstance3D.new()
+	mo.mesh = st_o.commit()
+	mo.material_override = outside
+	add_child(mo)
+	var mi := MeshInstance3D.new()
+	mi.mesh = st_i.commit()
+	mi.material_override = inside
+	add_child(mi)
+	# roof edges (gutters) and a couple of carlines inside
+	for sx in [-1.0, 1.0]:
+		MU.box(self, Vector3(0.06, 0.05, z1 - z0), Vector3(sx * 1.37, cy + cos(a_max) * r - 0.02, (z0 + z1) * 0.5), outside)
+	for zz in [11.4, 12.6, 13.6]:
+		var carline := []
+		for k in range(n + 1):
+			var a := lerpf(-a_max, a_max, float(k) / n)
+			carline.append(Vector3(sin(a) * (r - 0.06), cy + cos(a) * (r - 0.06), zz))
+		for k in range(n):
+			var p_a: Vector3 = carline[k]
+			var p_b: Vector3 = carline[k + 1]
+			var mid := (p_a + p_b) * 0.5
+			var seg := MU.box(self, Vector3((p_b - p_a).length() + 0.01, 0.05, 0.05), mid, inside)
+			seg.rotation.z = atan2(p_b.y - p_a.y, p_b.x - p_a.x)
+
+
+## Rivets, washout plugs, lagging bands and extra pipework on the backhead.
+func _backhead_details(bh: Node3D, black: Material, brass: Material, copper: Material, steel: Material) -> void:
+	var rivet := SphereMesh.new()
+	rivet.radius = 0.011
+	rivet.height = 0.012
+	rivet.radial_segments = 6
+	rivet.rings = 3
+	rivet.material = black
+	var xf := []
+	# ring of rivets round the backhead edge and round the firehole
+	for k in range(56):
+		var a := TAU * k / 56.0
+		var p := Vector3(cos(a) * 0.9, 3.0 + sin(a) * 0.9, 0.035)
+		if p.y > FLOOR + 0.2:
+			xf.append(Transform3D(Basis(), p))
+	for k in range(22):
+		var a := TAU * k / 22.0
+		xf.append(Transform3D(Basis(), Vector3(cos(a) * 0.33, 1.98 + sin(a) * 0.33, 0.04)))
+	for row in range(3):
+		for k in range(13):
+			xf.append(Transform3D(Basis(), Vector3(-0.9 + k * 0.15, FLOOR + 0.28 + row * 0.001, 0.035)))
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = rivet
+	mm.instance_count = xf.size()
+	for i in range(xf.size()):
+		mm.set_instance_transform(i, xf[i])
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = mm
+	bh.add_child(mmi)
+	# brass washout plugs
+	for p in [Vector3(-0.78, 2.35, 0.05), Vector3(0.78, 2.35, 0.05), Vector3(-0.55, 3.72, 0.05), Vector3(0.55, 3.72, 0.05), Vector3(0.0, 2.38, 0.05)]:
+		MU.cyl(bh, 0.035, 0.03, p, brass, Vector3(90, 0, 0), 6)
+	# pipe runs from the manifold down to the injectors and ejector
+	for sx in [-1.0, 1.0]:
+		MU.cyl(bh, 0.016, 0.7, Vector3(sx * 0.32, 3.62, 0.1), copper, Vector3(0, 0, 90), 8)
+	MU.cyl(bh, 0.025, 1.6, Vector3(0, 3.95, 0.14), steel, Vector3(0, 0, 90), 8)
+	# cleading band across the top of the backhead
+	MU.box(bh, Vector3(1.7, 0.03, 0.02), Vector3(0, 3.82, 0.045), steel)
 
 
 var _anim_shovel := 0.0
