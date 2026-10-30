@@ -67,6 +67,7 @@ func setup(t: Track, r: Dictionary) -> void:
 	_build_ref()
 	_mark_bridges()
 	_stamp_corridor()
+	build_coarse_distance()
 
 
 # ---------------------------------------------------------- natural ground
@@ -239,7 +240,7 @@ func height_at(x: float, z: float) -> float:
 
 
 # ---------------------------------------------------------------- meshing
-var terrain_material: StandardMaterial3D
+var terrain_material: ShaderMaterial
 
 
 func color_at(x: float, z: float, h: float, ny: float, d: float) -> Color:
@@ -264,14 +265,18 @@ func build(parent: Node3D, quality: int) -> void:
 	var pm := PlaneMesh.new()
 	pm.size = area.size
 	water.mesh = pm
-	var wm := StandardMaterial3D.new()
-	wm.albedo_color = Color(0.12, 0.25, 0.28) if theme == "nsw" else Color(0.18, 0.24, 0.26)
-	wm.roughness = 0.08
-	wm.metallic = 0.35
+	var wm := TX.shader_mat("res://assets/shaders/water.gdshader")
+	wm.set_shader_parameter("wave_nrm", TX.t("water_normal"))
+	wm.set_shader_parameter("rain", 1.0 if GameSettings.weather == "rain" else 0.0)
+	if theme != "nsw":
+		wm.set_shader_parameter("deep_color", Color(0.06, 0.1, 0.09))
+		wm.set_shader_parameter("shallow_color", Color(0.14, 0.2, 0.16))
 	water.material_override = wm
+	water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	water.position = Vector3(area.get_center().x, water_y, area.get_center().y)
 	water.name = "Water"
 	root.add_child(water)
+	build_backdrop(root)
 
 
 func _chunk(ci: int, cj: int, res: float, mat: Material) -> MeshInstance3D:
@@ -341,161 +346,177 @@ func _chunk(ci: int, cj: int, res: float, mat: Material) -> MeshInstance3D:
 	return mi
 
 
+## Splat weights for the terrain shader (see assets/shaders/terrain.gdshader):
+## r = main ground, g = rock, b = secondary (litter / rough grass), a = cess gravel.
 func _color(x: float, z: float, h: float, ny: float, d: float) -> Color:
-	var p := n_patch.get_noise_2d(x, z)
-	var fine := n_small.get_noise_2d(x * 3.0, z * 3.0)
-	var c: Color
+	var fine := n_small.get_noise_2d(x * 2.0, z * 2.0)
+	var rock := smoothstep(0.88, 0.62, ny)
+	var gravel := smoothstep(5.2, 3.7, d) * clampf(0.9 + fine * 0.4, 0.0, 1.0)
+	var main := 1.0
+	var second := 0.0
 	if theme == "nsw":
-		var grass := Color(0.47, 0.45, 0.27).lerp(Color(0.36, 0.38, 0.2), p * 0.5 + 0.5)
-		var litter := Color(0.38, 0.31, 0.22)
-		c = grass.lerp(litter, clampf(fine * 0.8 + 0.3, 0.0, 1.0))
-		var rock := Color(0.74, 0.55, 0.36).lerp(Color(0.62, 0.43, 0.3), fine * 0.5 + 0.5)
-		c = c.lerp(rock, smoothstep(0.86, 0.6, ny))
+		# bush floor: leaf litter in patches, more on slopes and under the trees
+		var bush := n_patch.get_noise_2d(x * 1.7, z * 1.7) * 0.5 + 0.5
+		second = clampf((bush - 0.35) * 1.6 + fine * 0.5 + (1.0 - ny) * 1.5, 0.0, 1.0)
+		if d < 22.0:
+			second *= 0.4          # mown railway corridor
 	else:
-		var fields := [Color(0.33, 0.47, 0.2), Color(0.42, 0.53, 0.24), Color(0.72, 0.64, 0.36),
-			Color(0.45, 0.36, 0.25), Color(0.3, 0.42, 0.18)]
-		var fi := int((p * 0.5 + 0.5) * 4.99)
-		c = (fields[fi] as Color).lerp(Color(0.3, 0.42, 0.2), 0.15 + fine * 0.1)
-		c = c.lerp(Color(0.45, 0.4, 0.3), smoothstep(0.8, 0.55, ny))
-	# beaches / mud near water
-	c = c.lerp(Color(0.55, 0.5, 0.38), smoothstep(water_y + 2.5, water_y + 0.2, h))
-	# cess and formation: trampled ash / gravel
-	c = c.lerp(Color(0.42, 0.39, 0.34), smoothstep(16.0, 9.0, d))
+		# farmland outside the railway fence, rough grass inside it and on banks
+		second = smoothstep(26.0, 16.0, d) + (1.0 - ny) * 2.0
+		second = clampf(second, 0.0, 1.0)
+	# muddy banks near water
+	var mud := smoothstep(water_y + 2.0, water_y + 0.3, h)
+	second = maxf(second, mud)
+	main = clampf(1.0 - second, 0.0, 1.0)
+	var c := Color(main, 0.0, second, 0.0)
+	c = c.lerp(Color(0.0, 1.0, 0.0, 0.0), rock)
+	c = c.lerp(Color(0.0, 0.0, 0.0, 1.0), gravel)
 	return c
 
 
-func _terrain_material() -> StandardMaterial3D:
-	var m := StandardMaterial3D.new()
-	m.vertex_color_use_as_albedo = true
-	var nt := NoiseTexture2D.new()
-	var fn := FastNoiseLite.new()
-	fn.frequency = 0.05
-	fn.fractal_octaves = 4
-	nt.noise = fn
-	nt.seamless = true
-	nt.width = 512
-	nt.height = 512
-	var grad := Gradient.new()
-	grad.set_color(0, Color(0.72, 0.72, 0.72))
-	grad.set_color(1, Color(1.18, 1.18, 1.18))
-	nt.color_ramp = grad
-	m.albedo_texture = nt
-	m.uv1_triplanar = true
-	m.uv1_scale = Vector3.ONE * 0.08
-	m.roughness = 0.97
+func _terrain_material() -> ShaderMaterial:
+	var m := TX.shader_mat("res://assets/shaders/terrain.gdshader")
+	var nsw := theme == "nsw"
+	m.set_shader_parameter("grass_alb", TX.t("grass_dry_albedo" if nsw else "grass_green_albedo"))
+	m.set_shader_parameter("grass_nrm", TX.t("grass_dry_normal" if nsw else "grass_green_normal"))
+	m.set_shader_parameter("rock_alb", TX.t("sandstone_albedo" if nsw else "clay_albedo"))
+	m.set_shader_parameter("rock_nrm", TX.t("sandstone_normal" if nsw else "clay_normal"))
+	m.set_shader_parameter("soil_alb", TX.t("litter_albedo" if nsw else "grass_dry_albedo"))
+	m.set_shader_parameter("soil_nrm", TX.t("litter_normal" if nsw else "grass_dry_normal"))
+	m.set_shader_parameter("gravel_alb", TX.t("gravel_albedo"))
+	m.set_shader_parameter("gravel_nrm", TX.t("gravel_normal"))
+	m.set_shader_parameter("field_alb", TX.t("stubble_albedo"))
+	m.set_shader_parameter("field_nrm", TX.t("stubble_normal"))
+	m.set_shader_parameter("plough_alb", TX.t("plough_albedo"))
+	m.set_shader_parameter("plough_nrm", TX.t("plough_normal"))
+	m.set_shader_parameter("macro_tex", TX.t("macro_variation"))
+	m.set_shader_parameter("use_fields", 0.0 if nsw else 1.0)
+	m.set_shader_parameter("rock_scale", 0.06 if nsw else 0.1)
+	m.set_shader_parameter("wetness", 0.7 if GameSettings.weather == "rain" else 0.0)
+	if not nsw:
+		m.set_shader_parameter("grass_tint_dry", Color(1, 1, 1))
 	return m
 
 
-# ------------------------------------------------------------------ trees
-func scatter_trees(parent: Node3D, quality: int) -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 42
-	var count: int = [2500, 6000, 11000][quality] if theme == "nsw" else [1500, 3500, 6500][quality]
-	var trunks := []
-	var crowns := []
-	var tries: int = count * 4
-	var center := track.bounds.get_center()
-	var reach := track.bounds.grow(1600.0)
-	while tries > 0 and trunks.size() < count:
-		tries -= 1
-		var x: float
-		var z: float
-		if rng.randf() < 0.8:
-			# most trees within sight of the line
-			var ts := rng.randf() * track.length
-			var lat := (22.0 + pow(rng.randf(), 2.0) * 700.0) * (1.0 if rng.randf() < 0.5 else -1.0)
-			var fr := track.flat_frame_at(ts, lat)
-			x = fr.origin.x
-			z = fr.origin.z
-		else:
-			x = rng.randf_range(reach.position.x, reach.end.x)
-			z = rng.randf_range(reach.position.y, reach.end.y)
-		query(x, z)
-		if q_d < 18.0:
-			continue
-		if theme == "ecml":
-			# English trees grow in hedgerows and copses
-			var clump := n_patch.get_noise_2d(x * 2.3, z * 2.3)
-			if clump < 0.25 and rng.randf() > 0.15:
-				continue
-		var h := shaped(x, z, q_d, q_h, q_br)
-		if h < water_y + 0.8:
-			continue
-		var sc := rng.randf_range(0.7, 1.35)
-		var rot := rng.randf() * TAU
-		var t := Transform3D(Basis(Vector3.UP, rot).scaled(Vector3.ONE * sc), Vector3(x, h - 0.2, z))
-		trunks.append(t)
-		crowns.append(t)
-	var trunk_mesh: Mesh
-	var crown_mesh: Mesh
-	var trunk_mat: StandardMaterial3D
-	var crown_mat: StandardMaterial3D
-	if theme == "nsw":
-		trunk_mesh = _cyl_mesh(0.25, 0.12, 12.0)
-		trunk_mat = MU.mat(Color(0.7, 0.66, 0.6), 0.9)        # pale gum bark
-		crown_mesh = _crown_mesh(5.0, 5.0, 9.5, true)
-		crown_mat = MU.mat(Color(0.36, 0.42, 0.3), 0.95)      # grey-green eucalypt leaves
-	else:
-		trunk_mesh = _cyl_mesh(0.35, 0.22, 6.0)
-		trunk_mat = MU.mat(Color(0.3, 0.25, 0.2), 0.95)
-		crown_mesh = _crown_mesh(5.0, 4.6, 8.5, false)
-		crown_mat = MU.mat(Color(0.2, 0.33, 0.14), 0.95)
-	# bucket into 1 km cells so distant groups are culled (helps laptops / integrated GPUs)
-	var cells := {}
-	for i in range(trunks.size()):
-		var o: Vector3 = (trunks[i] as Transform3D).origin
-		var key := Vector2i(int(floor(o.x / 1000.0)), int(floor(o.z / 1000.0)))
-		if not cells.has(key):
-			cells[key] = []
-		cells[key].append(trunks[i])
-	var far: float = [1800.0, 2800.0, 4000.0][quality]
-	for key in cells:
-		var list: Array = cells[key]
-		_multimesh(parent, trunk_mesh, trunk_mat, list, "Trunks").visibility_range_end = far * 0.7
-		_multimesh(parent, crown_mesh, crown_mat, list, "Crowns").visibility_range_end = far
+## Field layout shared with the shader (for hedgerows): rotated grid of fields.
+const FIELD_SIZE := Vector2(260.0, 190.0)
+const FIELD_ANGLE := 0.4
 
 
-func _multimesh(parent: Node3D, mesh: Mesh, mat: Material, xforms: Array, nm: String) -> MultiMeshInstance3D:
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = mesh
-	mm.instance_count = xforms.size()
-	for i in range(xforms.size()):
-		mm.set_instance_transform(i, xforms[i])
-	var mmi := MultiMeshInstance3D.new()
-	mmi.multimesh = mm
-	mmi.material_override = mat
-	mmi.name = nm
-	parent.add_child(mmi)
-	return mmi
+func field_rot(p: Vector2) -> Vector2:
+	var c := cos(FIELD_ANGLE)
+	var s := sin(FIELD_ANGLE)
+	return Vector2(c * p.x - s * p.y, s * p.x + c * p.y)
 
 
-func _cyl_mesh(rb: float, rt: float, h: float) -> Mesh:
-	var cm := CylinderMesh.new()
-	cm.bottom_radius = rb
-	cm.top_radius = rt
-	cm.height = h
-	cm.radial_segments = 6
-	cm.rings = 1
+func field_unrot(p: Vector2) -> Vector2:
+	var c := cos(FIELD_ANGLE)
+	var s := sin(FIELD_ANGLE)
+	return Vector2(c * p.x + s * p.y, -s * p.x + c * p.y)
+
+
+# ----------------------------------------------------------- distant hills
+## A ring of hills from the edge of the terrain out to ~16 km so the horizon
+## is never empty. Heights rise away from the terrain edge.
+func build_backdrop(parent: Node3D) -> void:
+	var c := area.get_center()
+	var segs := 256
+	var rings := 18
+	var r_out := maxf(area.size.x, area.size.y) * 0.5 + 14000.0
+	var hn := FastNoiseLite.new()
+	hn.seed = n_big.seed + 99
+	hn.frequency = 1.0 / 5000.0
+	hn.fractal_octaves = 4
+	var verts := PackedVector3Array()
+	var cols := PackedColorArray()
+	var idx := PackedInt32Array()
+	var mean_h := (track.max_h + track.min_h) * 0.5
+	for i in range(segs):
+		var a := TAU * i / segs
+		var dir := Vector2(cos(a), sin(a))
+		# distance from centre to the terrain rectangle edge along this direction
+		var tx := (area.size.x * 0.5 - 1.0) / maxf(absf(dir.x), 1e-4)
+		var tz := (area.size.y * 0.5 - 1.0) / maxf(absf(dir.y), 1e-4)
+		var r_in := minf(tx, tz)
+		for j in range(rings + 1):
+			var f := float(j) / rings
+			var r := lerpf(r_in, r_out, pow(f, 1.4))
+			var p := c + dir * r
+			var edge_h := nat(p.x, p.y, R_STAMP) if j == 0 else 0.0
+			var hill := hn.get_noise_2d(p.x, p.y) * 0.5 + 0.5
+			var rise := smoothstep(0.0, 0.35, f)
+			var amp_h := (420.0 if theme == "nsw" else 160.0) * hill * hill + (60.0 if theme == "nsw" else 25.0)
+			var y := lerpf(nat(c.x + dir.x * r_in, c.y + dir.y * r_in, R_STAMP), mean_h + amp_h, rise) if j > 0 else edge_h
+			verts.append(Vector3(p.x, y - 0.5, p.y))
+			var rockiness := 0.25 * hill if theme == "nsw" else 0.0
+			cols.append(Color(1.0 - rockiness, rockiness, 0.35 if theme == "nsw" else 0.0, 0.0))
+	for i in range(segs):
+		var i2 := (i + 1) % segs
+		for j in range(rings):
+			var a0 := i * (rings + 1) + j
+			var b0 := i2 * (rings + 1) + j
+			idx.append_array([a0, a0 + 1, b0, b0, a0 + 1, b0 + 1])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_COLOR] = cols
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var am := ArrayMesh.new()
+	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	var st := SurfaceTool.new()
-	st.append_from(cm, 0, Transform3D(Basis(), Vector3(0, h * 0.5, 0)))
-	return st.commit()
+	st.create_from(am, 0)
+	st.generate_normals()
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = terrain_material
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.name = "DistantHills"
+	parent.add_child(mi)
 
 
-func _crown_mesh(radius: float, height: float, base_y: float, sparse: bool) -> Mesh:
-	var st := SurfaceTool.new()
-	var blobs := 7 if sparse else 5
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 7 if sparse else 9
-	for b in range(blobs):
-		var sm := SphereMesh.new()
-		var r := radius * rng.randf_range(0.5, 0.75)
-		sm.radius = r
-		sm.height = r * (1.3 if sparse else 1.7)
-		sm.radial_segments = 7
-		sm.rings = 4
-		var off := Vector3(rng.randf_range(-1, 1) * radius * 0.45, base_y + rng.randf_range(-0.3, 0.6) * height * 0.5, rng.randf_range(-1, 1) * radius * 0.45)
-		if b == 0:
-			off = Vector3(0, base_y + height * 0.2, 0)
-		st.append_from(sm, 0, Transform3D(Basis(), off))
-	return st.commit()
+# ------------------------------------------------------- coarse distance grid
+## Distance to the line on a 100 m grid (chamfer transform), for placing things
+## far from the track (hedgerows, distant houses) without per-sample searches.
+const COARSE := 100.0
+var coarse_w := 0
+var coarse_h := 0
+var coarse := PackedFloat32Array()
+
+
+func build_coarse_distance() -> void:
+	coarse_w = int(area.size.x / COARSE) + 1
+	coarse_h = int(area.size.y / COARSE) + 1
+	coarse.resize(coarse_w * coarse_h)
+	coarse.fill(1e9)
+	for i in range(0, track.n, 10):
+		var cx := int((track.px[i] - area.position.x) / COARSE)
+		var cz := int((track.pz[i] - area.position.y) / COARSE)
+		if cx >= 0 and cz >= 0 and cx < coarse_w and cz < coarse_h:
+			coarse[cz * coarse_w + cx] = 0.0
+	var dg := COARSE * 1.41421
+	for z in range(coarse_h):
+		for x in range(coarse_w):
+			var i := z * coarse_w + x
+			var v := coarse[i]
+			if x > 0: v = minf(v, coarse[i - 1] + COARSE)
+			if z > 0: v = minf(v, coarse[i - coarse_w] + COARSE)
+			if x > 0 and z > 0: v = minf(v, coarse[i - coarse_w - 1] + dg)
+			if x < coarse_w - 1 and z > 0: v = minf(v, coarse[i - coarse_w + 1] + dg)
+			coarse[i] = v
+	for z in range(coarse_h - 1, -1, -1):
+		for x in range(coarse_w - 1, -1, -1):
+			var i := z * coarse_w + x
+			var v := coarse[i]
+			if x < coarse_w - 1: v = minf(v, coarse[i + 1] + COARSE)
+			if z < coarse_h - 1: v = minf(v, coarse[i + coarse_w] + COARSE)
+			if x < coarse_w - 1 and z < coarse_h - 1: v = minf(v, coarse[i + coarse_w + 1] + dg)
+			if x > 0 and z < coarse_h - 1: v = minf(v, coarse[i + coarse_w - 1] + dg)
+			coarse[i] = v
+
+
+func coarse_dist(x: float, z: float) -> float:
+	var cx := int((x - area.position.x) / COARSE)
+	var cz := int((z - area.position.y) / COARSE)
+	if cx < 0 or cz < 0 or cx >= coarse_w or cz >= coarse_h:
+		return 1e9
+	return coarse[cz * coarse_w + cx]

@@ -20,7 +20,7 @@ var passenger_load: float = 0.3     # 0..1 of seated capacity
 var ai_fireman: bool = true         # A4: AI handles the fireman's side
 var ai_driver: bool = false         # A4: AI drives while you fire
 var show_tooltips: bool = true
-var graphics_quality: int = 1       # 0 low, 1 medium, 2 high
+var graphics_quality: int = 2       # 0 low, 1 medium, 2 high, 3 ultra
 var mouse_sensitivity: float = 0.2
 var master_volume: float = 0.8
 
