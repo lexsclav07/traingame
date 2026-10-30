@@ -120,6 +120,7 @@ func build(cab_root: Node3D) -> void:
 	fire_light.omni_range = 4.5
 	fire_light.light_energy = 0.0
 	fire_light.shadow_enabled = false
+	fire_light.light_specular = 0.25
 	add_child(fire_light)
 	fire_light.position = Vector3(0, 1.95, 11.1)
 

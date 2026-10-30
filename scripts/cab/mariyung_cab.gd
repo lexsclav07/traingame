@@ -214,6 +214,7 @@ func build(cab_root: Node3D) -> void:
 	desk_light = OmniLight3D.new()
 	desk_light.light_color = Color(0.85, 0.9, 1.0)
 	desk_light.omni_range = 1.2
+	desk_light.light_specular = 0.0
 	desk_light.light_energy = 0.0
 	add_child(desk_light)
 	desk_light.position = Vector3(0, 2.45, 1.2)
