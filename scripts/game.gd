@@ -41,7 +41,7 @@ func _build() -> void:
 	terrain = TerrainBuilder.new()
 	terrain.setup(track, track.route)
 	terrain.build(self, q)
-	terrain.scatter_trees(self, q)
+	VegetationBuilder.new().build(self, track, terrain, q)
 	TrackBuilder.new().build(self, track, terrain, q)
 	scenery = SceneryBuilder.new()
 	scenery.build(self, track, terrain, q)
@@ -67,6 +67,10 @@ func _build() -> void:
 	rig.hover_changed.connect(func(_c): pass)
 	if gs.weather == "rain":
 		envb.attach_rain(rig.cam)
+	var grass := GrassField.new()
+	grass.name = "Grass"
+	add_child(grass)
+	grass.setup(terrain, rig.cam, q)
 	audio = TrainAudio.new()
 	add_child(audio)
 	audio.setup(sim, gs.train == GameSettings.TrainType.A4)
