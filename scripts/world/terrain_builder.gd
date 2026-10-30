@@ -440,11 +440,22 @@ func scatter_trees(parent: Node3D, quality: int) -> void:
 		trunk_mat = MU.mat(Color(0.3, 0.25, 0.2), 0.95)
 		crown_mesh = _crown_mesh(5.0, 4.6, 8.5, false)
 		crown_mat = MU.mat(Color(0.2, 0.33, 0.14), 0.95)
-	_multimesh(parent, trunk_mesh, trunk_mat, trunks, "Trunks")
-	_multimesh(parent, crown_mesh, crown_mat, crowns, "Crowns")
+	# bucket into 1 km cells so distant groups are culled (helps laptops / integrated GPUs)
+	var cells := {}
+	for i in range(trunks.size()):
+		var o: Vector3 = (trunks[i] as Transform3D).origin
+		var key := Vector2i(int(floor(o.x / 1000.0)), int(floor(o.z / 1000.0)))
+		if not cells.has(key):
+			cells[key] = []
+		cells[key].append(trunks[i])
+	var far: float = [1800.0, 2800.0, 4000.0][quality]
+	for key in cells:
+		var list: Array = cells[key]
+		_multimesh(parent, trunk_mesh, trunk_mat, list, "Trunks").visibility_range_end = far * 0.7
+		_multimesh(parent, crown_mesh, crown_mat, list, "Crowns").visibility_range_end = far
 
 
-func _multimesh(parent: Node3D, mesh: Mesh, mat: Material, xforms: Array, nm: String) -> void:
+func _multimesh(parent: Node3D, mesh: Mesh, mat: Material, xforms: Array, nm: String) -> MultiMeshInstance3D:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.mesh = mesh
@@ -456,6 +467,7 @@ func _multimesh(parent: Node3D, mesh: Mesh, mat: Material, xforms: Array, nm: St
 	mmi.material_override = mat
 	mmi.name = nm
 	parent.add_child(mmi)
+	return mmi
 
 
 func _cyl_mesh(rb: float, rt: float, h: float) -> Mesh:

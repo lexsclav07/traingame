@@ -257,8 +257,8 @@ func build(cab_root: Node3D) -> void:
 	# ---------------------------------------------------------------- views
 	add_view("Driver (seated)", Vector3(-0.92, 2.78, 12.85), 0.0, -6.0)
 	add_view("Fireman", Vector3(0.45, 2.95, 13.3), 8.0, -28.0)
-	add_view("Look out (driver's side)", Vector3(-1.52, 3.12, 12.1), 0.0, -4.0)
-	add_view("Look out (fireman's side)", Vector3(1.52, 3.12, 12.1), 0.0, -4.0)
+	add_view("Look out (driver's side)", Vector3(-1.62, 3.12, 12.3), 0.0, -4.0)
+	add_view("Look out (fireman's side)", Vector3(1.62, 3.12, 12.3), 0.0, -4.0)
 	add_view("Standing (driver)", Vector3(-0.7, 3.15, 12.6), 6.0, -12.0)
 
 

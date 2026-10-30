@@ -130,6 +130,10 @@ func _build_a4() -> void:
 	effects = Effects.new()
 	add_child(effects)
 	effects.setup(loco)
+	# express headcode oil lamps are lit at dusk and night
+	if gs.time_of_day != "day":
+		for lm in loco.head_lamps:
+			(lm as StandardMaterial3D).emission_energy_multiplier = 2.5
 
 
 func _on_message(t: String, kind: String) -> void:

@@ -683,6 +683,12 @@ func _lights() -> void:
 	var last := train.vehicles[train.vehicles.size() - 1]
 	for lamp_m in last.tail_lamps:
 		(lamp_m as StandardMaterial3D).emission_energy_multiplier = 3.0 if bat_v > 80.0 else 0.0
+	# saloon lighting glows through the windows after dark
+	var wm := MU.mat(Color(0.06, 0.08, 0.1), 0.08, 0.5, "nif_win")
+	var lit := siv_on and _on("saloon_lights") and GameSettings.time_of_day != "day"
+	wm.emission_enabled = lit
+	wm.emission = Color(1.0, 0.95, 0.85)
+	wm.emission_energy_multiplier = 0.9 if lit else 0.0
 
 
 func _sounds(dt: float, vk: float) -> void:
