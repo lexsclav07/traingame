@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://blqjhjs2m62v3"
 path.s3tc="res://.godot/imported/plough_albedo.jpg-59fb6e56aa2722ed629a6b5a58185eb4.s3tc.ctex"
+path.etc2="res://.godot/imported/plough_albedo.jpg-59fb6e56aa2722ed629a6b5a58185eb4.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/plough_albedo.jpg"
-dest_files=["res://.godot/imported/plough_albedo.jpg-59fb6e56aa2722ed629a6b5a58185eb4.s3tc.ctex"]
+dest_files=["res://.godot/imported/plough_albedo.jpg-59fb6e56aa2722ed629a6b5a58185eb4.s3tc.ctex", "res://.godot/imported/plough_albedo.jpg-59fb6e56aa2722ed629a6b5a58185eb4.etc2.ctex"]
 
 [params]
 

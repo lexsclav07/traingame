@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://34j8uu5lb3cm"
 path.bptc="res://.godot/imported/tactile_normal.png-6bb3b177a560560424c27907650056c3.bptc.ctex"
+path.astc="res://.godot/imported/tactile_normal.png-6bb3b177a560560424c27907650056c3.astc.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/tactile_normal.png"
-dest_files=["res://.godot/imported/tactile_normal.png-6bb3b177a560560424c27907650056c3.bptc.ctex"]
+dest_files=["res://.godot/imported/tactile_normal.png-6bb3b177a560560424c27907650056c3.bptc.ctex", "res://.godot/imported/tactile_normal.png-6bb3b177a560560424c27907650056c3.astc.ctex"]
 
 [params]
 

@@ -71,6 +71,26 @@ static func painted(col: Color, rough := 0.45, metal := 0.1, wear := "grime", sc
 	return m
 
 
+## Moulded plastic / powder-coated panel with a fine stipple.
+static func plastic(col: Color, rough := 0.6, scale := 6.0, key := "") -> StandardMaterial3D:
+	var k := key if key != "" else "plastic|%s|%.2f|%.2f" % [col.to_html(), rough, scale]
+	if _mats.has(k):
+		return _mats[k]
+	var m := StandardMaterial3D.new()
+	m.albedo_color = col
+	m.roughness = rough
+	# interiors: keep the sky out of the reflections (no reflection probes)
+	m.metallic_specular = 0.25
+	m.normal_enabled = true
+	m.normal_texture = t("plastic_normal")
+	m.normal_scale = 0.5
+	m.uv1_triplanar = true
+	m.uv1_scale = Vector3.ONE * scale
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	_mats[k] = m
+	return m
+
+
 ## Brushed metal: stainless steel bodies, polished rail heads, brass.
 static func metal(col: Color, rough := 0.3, brushed := true, scale := 2.0, key := "") -> StandardMaterial3D:
 	var k := key if key != "" else "metal|%s|%.2f|%s|%.2f" % [col.to_html(), rough, str(brushed), scale]

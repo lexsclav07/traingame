@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cnga3wl2ewamc"
 path.s3tc="res://.godot/imported/paint_wear.png-d5c629037e5cbba54f2cba57b413ed49.s3tc.ctex"
+path.etc2="res://.godot/imported/paint_wear.png-d5c629037e5cbba54f2cba57b413ed49.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/paint_wear.png"
-dest_files=["res://.godot/imported/paint_wear.png-d5c629037e5cbba54f2cba57b413ed49.s3tc.ctex"]
+dest_files=["res://.godot/imported/paint_wear.png-d5c629037e5cbba54f2cba57b413ed49.s3tc.ctex", "res://.godot/imported/paint_wear.png-d5c629037e5cbba54f2cba57b413ed49.etc2.ctex"]
 
 [params]
 

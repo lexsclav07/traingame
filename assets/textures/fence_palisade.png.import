@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cg358jiivcoik"
 path.s3tc="res://.godot/imported/fence_palisade.png-19b0fad3fedda3c50b177971c06e58b2.s3tc.ctex"
+path.etc2="res://.godot/imported/fence_palisade.png-19b0fad3fedda3c50b177971c06e58b2.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/fence_palisade.png"
-dest_files=["res://.godot/imported/fence_palisade.png-19b0fad3fedda3c50b177971c06e58b2.s3tc.ctex"]
+dest_files=["res://.godot/imported/fence_palisade.png-19b0fad3fedda3c50b177971c06e58b2.s3tc.ctex", "res://.godot/imported/fence_palisade.png-19b0fad3fedda3c50b177971c06e58b2.etc2.ctex"]
 
 [params]
 

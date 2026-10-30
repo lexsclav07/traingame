@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://ce485hgrqsbc7"
 path.bptc="res://.godot/imported/treadplate_normal.png-87b8b6bc2deb55b64a125a752d53eaf9.bptc.ctex"
+path.astc="res://.godot/imported/treadplate_normal.png-87b8b6bc2deb55b64a125a752d53eaf9.astc.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/treadplate_normal.png"
-dest_files=["res://.godot/imported/treadplate_normal.png-87b8b6bc2deb55b64a125a752d53eaf9.bptc.ctex"]
+dest_files=["res://.godot/imported/treadplate_normal.png-87b8b6bc2deb55b64a125a752d53eaf9.bptc.ctex", "res://.godot/imported/treadplate_normal.png-87b8b6bc2deb55b64a125a752d53eaf9.astc.ctex"]
 
 [params]
 

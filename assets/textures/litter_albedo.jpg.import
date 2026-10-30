@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bv38s333ufkq5"
 path.s3tc="res://.godot/imported/litter_albedo.jpg-04b03c1d3b1a779697aad1bc93e46943.s3tc.ctex"
+path.etc2="res://.godot/imported/litter_albedo.jpg-04b03c1d3b1a779697aad1bc93e46943.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/litter_albedo.jpg"
-dest_files=["res://.godot/imported/litter_albedo.jpg-04b03c1d3b1a779697aad1bc93e46943.s3tc.ctex"]
+dest_files=["res://.godot/imported/litter_albedo.jpg-04b03c1d3b1a779697aad1bc93e46943.s3tc.ctex", "res://.godot/imported/litter_albedo.jpg-04b03c1d3b1a779697aad1bc93e46943.etc2.ctex"]
 
 [params]
 

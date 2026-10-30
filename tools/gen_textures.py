@@ -598,6 +598,32 @@ def make_vehicle():
     save_normal("roofiron_normal", corr, 6.0)
 
 
+def make_interior():
+    print("interior")
+    n = 512
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float32)
+    # moulded plastic / powder coat: fine stipple, very subtle
+    st = spectral(n, 0.4, 601, fmin=60)
+    save_normal("plastic_normal", st * 0.02, 1.0)
+    # woven seat fabric (moquette): twill weave + fibre noise, neutral (tint in material)
+    weave = (np.sin((xx + yy) / n * math.pi * 2 * 96) * 0.5 + 0.5) * (np.sin((xx - yy) / n * math.pi * 2 * 48) * 0.5 + 0.5)
+    fib = norm01(spectral(n, 0.8, 602, fmin=40))
+    blot = norm01(spectral(n, 2.2, 603))
+    t = 0.62 + weave * 0.18 + fib * 0.12 - blot * 0.08
+    save_rgb("fabric_albedo", np.stack([t, t, t], -1))
+    save_normal("fabric_normal", weave * 0.5 + fib * 0.3, 3.0)
+    # heat-stained black paint for the backhead
+    base = norm01(spectral(n, 2.2, 611))
+    streak = norm01(spectral(n, 1.6, 612, aniso=(0.08, 1.0))) ** 3
+    t = 0.85 + base * 0.15 - streak * 0.25
+    rgb = np.stack([t, t * 0.97, t * 0.93], -1)
+    rgb = lerp(rgb, np.array([0.75, 0.6, 0.45]), (streak * 0.25)[..., None])
+    save_rgb("heatpaint_albedo", rgb)
+    # tarnish for brass and copper (multiply)
+    t = 0.82 + norm01(spectral(n, 2.0, 621)) * 0.18 - norm01(spectral(n, 1.2, 622, fmin=30)) ** 4 * 0.2
+    save_gray("tarnish", np.clip(t, 0, 1))
+
+
 # --------------------------------------------------------------------- environment
 def make_environment():
     print("environment")
@@ -836,7 +862,8 @@ def make_scenery():
 
 
 JOBS = {"terrain": make_terrain, "track": make_track, "vegetation": make_vegetation,
-        "vehicle": make_vehicle, "environment": make_environment, "scenery": make_scenery}
+        "vehicle": make_vehicle, "environment": make_environment, "scenery": make_scenery,
+        "interior": make_interior}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(JOBS)

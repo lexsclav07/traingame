@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://ddi0ji8hgufsa"
 path.s3tc="res://.godot/imported/valance.png-70906e929a8536acc7d1827ad64e0bbc.s3tc.ctex"
+path.etc2="res://.godot/imported/valance.png-70906e929a8536acc7d1827ad64e0bbc.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/valance.png"
-dest_files=["res://.godot/imported/valance.png-70906e929a8536acc7d1827ad64e0bbc.s3tc.ctex"]
+dest_files=["res://.godot/imported/valance.png-70906e929a8536acc7d1827ad64e0bbc.s3tc.ctex", "res://.godot/imported/valance.png-70906e929a8536acc7d1827ad64e0bbc.etc2.ctex"]
 
 [params]
 

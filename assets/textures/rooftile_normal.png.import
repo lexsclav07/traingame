@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://kfqteahft0sr"
 path.bptc="res://.godot/imported/rooftile_normal.png-00c79a2112d96e66b48c6a54335a8118.bptc.ctex"
+path.astc="res://.godot/imported/rooftile_normal.png-00c79a2112d96e66b48c6a54335a8118.astc.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/rooftile_normal.png"
-dest_files=["res://.godot/imported/rooftile_normal.png-00c79a2112d96e66b48c6a54335a8118.bptc.ctex"]
+dest_files=["res://.godot/imported/rooftile_normal.png-00c79a2112d96e66b48c6a54335a8118.bptc.ctex", "res://.godot/imported/rooftile_normal.png-00c79a2112d96e66b48c6a54335a8118.astc.ctex"]
 
 [params]
 

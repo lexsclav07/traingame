@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bnf3eh5ugw0us"
 path.bptc="res://.godot/imported/stubble_normal.png-27ef16e5bba05c601d70dbeb486e2455.bptc.ctex"
+path.astc="res://.godot/imported/stubble_normal.png-27ef16e5bba05c601d70dbeb486e2455.astc.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/stubble_normal.png"
-dest_files=["res://.godot/imported/stubble_normal.png-27ef16e5bba05c601d70dbeb486e2455.bptc.ctex"]
+dest_files=["res://.godot/imported/stubble_normal.png-27ef16e5bba05c601d70dbeb486e2455.bptc.ctex", "res://.godot/imported/stubble_normal.png-27ef16e5bba05c601d70dbeb486e2455.astc.ctex"]
 
 [params]
 

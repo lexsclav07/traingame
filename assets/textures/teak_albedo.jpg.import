@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dgkfcjshtg1gl"
 path.s3tc="res://.godot/imported/teak_albedo.jpg-6795629e98bfee683b778deb37ef2d98.s3tc.ctex"
+path.etc2="res://.godot/imported/teak_albedo.jpg-6795629e98bfee683b778deb37ef2d98.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/teak_albedo.jpg"
-dest_files=["res://.godot/imported/teak_albedo.jpg-6795629e98bfee683b778deb37ef2d98.s3tc.ctex"]
+dest_files=["res://.godot/imported/teak_albedo.jpg-6795629e98bfee683b778deb37ef2d98.s3tc.ctex", "res://.godot/imported/teak_albedo.jpg-6795629e98bfee683b778deb37ef2d98.etc2.ctex"]
 
 [params]
 

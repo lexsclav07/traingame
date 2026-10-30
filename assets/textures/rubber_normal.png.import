@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bj55k3sfie5ud"
 path.bptc="res://.godot/imported/rubber_normal.png-c67f427a20e4e5564af32c88aa495fbe.bptc.ctex"
+path.astc="res://.godot/imported/rubber_normal.png-c67f427a20e4e5564af32c88aa495fbe.astc.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/rubber_normal.png"
-dest_files=["res://.godot/imported/rubber_normal.png-c67f427a20e4e5564af32c88aa495fbe.bptc.ctex"]
+dest_files=["res://.godot/imported/rubber_normal.png-c67f427a20e4e5564af32c88aa495fbe.bptc.ctex", "res://.godot/imported/rubber_normal.png-c67f427a20e4e5564af32c88aa495fbe.astc.ctex"]
 
 [params]
 

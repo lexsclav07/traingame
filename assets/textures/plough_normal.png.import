@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://b30lek5kbnm12"
 path.bptc="res://.godot/imported/plough_normal.png-40efd1e2311831c8d6f380fd9c9a602c.bptc.ctex"
+path.astc="res://.godot/imported/plough_normal.png-40efd1e2311831c8d6f380fd9c9a602c.astc.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/plough_normal.png"
-dest_files=["res://.godot/imported/plough_normal.png-40efd1e2311831c8d6f380fd9c9a602c.bptc.ctex"]
+dest_files=["res://.godot/imported/plough_normal.png-40efd1e2311831c8d6f380fd9c9a602c.bptc.ctex", "res://.godot/imported/plough_normal.png-40efd1e2311831c8d6f380fd9c9a602c.astc.ctex"]
 
 [params]
 

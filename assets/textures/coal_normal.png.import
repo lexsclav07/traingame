@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://balxus80qd8mk"
 path.bptc="res://.godot/imported/coal_normal.png-0ecb5c44a021977f929b3aac2a251aac.bptc.ctex"
+path.astc="res://.godot/imported/coal_normal.png-0ecb5c44a021977f929b3aac2a251aac.astc.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/coal_normal.png"
-dest_files=["res://.godot/imported/coal_normal.png-0ecb5c44a021977f929b3aac2a251aac.bptc.ctex"]
+dest_files=["res://.godot/imported/coal_normal.png-0ecb5c44a021977f929b3aac2a251aac.bptc.ctex", "res://.godot/imported/coal_normal.png-0ecb5c44a021977f929b3aac2a251aac.astc.ctex"]
 
 [params]
 

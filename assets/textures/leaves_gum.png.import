@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://ckmku1cq88anh"
 path.s3tc="res://.godot/imported/leaves_gum.png-54a816571baf259e396f07e0151a345e.s3tc.ctex"
+path.etc2="res://.godot/imported/leaves_gum.png-54a816571baf259e396f07e0151a345e.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/leaves_gum.png"
-dest_files=["res://.godot/imported/leaves_gum.png-54a816571baf259e396f07e0151a345e.s3tc.ctex"]
+dest_files=["res://.godot/imported/leaves_gum.png-54a816571baf259e396f07e0151a345e.s3tc.ctex", "res://.godot/imported/leaves_gum.png-54a816571baf259e396f07e0151a345e.etc2.ctex"]
 
 [params]
 

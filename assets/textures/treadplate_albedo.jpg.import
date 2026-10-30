@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://k78fgmnxygh6"
 path.s3tc="res://.godot/imported/treadplate_albedo.jpg-2b75a45eb2694cd3c2f2d4cb677a7d64.s3tc.ctex"
+path.etc2="res://.godot/imported/treadplate_albedo.jpg-2b75a45eb2694cd3c2f2d4cb677a7d64.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/treadplate_albedo.jpg"
-dest_files=["res://.godot/imported/treadplate_albedo.jpg-2b75a45eb2694cd3c2f2d4cb677a7d64.s3tc.ctex"]
+dest_files=["res://.godot/imported/treadplate_albedo.jpg-2b75a45eb2694cd3c2f2d4cb677a7d64.s3tc.ctex", "res://.godot/imported/treadplate_albedo.jpg-2b75a45eb2694cd3c2f2d4cb677a7d64.etc2.ctex"]
 
 [params]
 

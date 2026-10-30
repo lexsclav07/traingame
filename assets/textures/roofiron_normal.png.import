@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://d38jfjeak6t4q"
 path.bptc="res://.godot/imported/roofiron_normal.png-89f5a048a701bee54619fb7f002395ff.bptc.ctex"
+path.astc="res://.godot/imported/roofiron_normal.png-89f5a048a701bee54619fb7f002395ff.astc.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/roofiron_normal.png"
-dest_files=["res://.godot/imported/roofiron_normal.png-89f5a048a701bee54619fb7f002395ff.bptc.ctex"]
+dest_files=["res://.godot/imported/roofiron_normal.png-89f5a048a701bee54619fb7f002395ff.bptc.ctex", "res://.godot/imported/roofiron_normal.png-89f5a048a701bee54619fb7f002395ff.astc.ctex"]
 
 [params]
 

@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dnlr2pt8h6008"
 path.s3tc="res://.godot/imported/grass_blades_dry.png-cf8e87b66f8c501ee8db5148f5d39571.s3tc.ctex"
+path.etc2="res://.godot/imported/grass_blades_dry.png-cf8e87b66f8c501ee8db5148f5d39571.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/grass_blades_dry.png"
-dest_files=["res://.godot/imported/grass_blades_dry.png-cf8e87b66f8c501ee8db5148f5d39571.s3tc.ctex"]
+dest_files=["res://.godot/imported/grass_blades_dry.png-cf8e87b66f8c501ee8db5148f5d39571.s3tc.ctex", "res://.godot/imported/grass_blades_dry.png-cf8e87b66f8c501ee8db5148f5d39571.etc2.ctex"]
 
 [params]
 

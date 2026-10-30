@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://ci5wq06065a13"
 path.bptc="res://.godot/imported/brushed_normal.png-b6578fe4d861e521008d44b639efc43a.bptc.ctex"
+path.astc="res://.godot/imported/brushed_normal.png-b6578fe4d861e521008d44b639efc43a.astc.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/brushed_normal.png"
-dest_files=["res://.godot/imported/brushed_normal.png-b6578fe4d861e521008d44b639efc43a.bptc.ctex"]
+dest_files=["res://.godot/imported/brushed_normal.png-b6578fe4d861e521008d44b639efc43a.bptc.ctex", "res://.godot/imported/brushed_normal.png-b6578fe4d861e521008d44b639efc43a.astc.ctex"]
 
 [params]
 

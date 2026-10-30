@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bqtptxk1ytbwb"
 path.s3tc="res://.godot/imported/bark_gum_albedo.jpg-2b9420870931699d4b46763cee6ebe94.s3tc.ctex"
+path.etc2="res://.godot/imported/bark_gum_albedo.jpg-2b9420870931699d4b46763cee6ebe94.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/bark_gum_albedo.jpg"
-dest_files=["res://.godot/imported/bark_gum_albedo.jpg-2b9420870931699d4b46763cee6ebe94.s3tc.ctex"]
+dest_files=["res://.godot/imported/bark_gum_albedo.jpg-2b9420870931699d4b46763cee6ebe94.s3tc.ctex", "res://.godot/imported/bark_gum_albedo.jpg-2b9420870931699d4b46763cee6ebe94.etc2.ctex"]
 
 [params]
 

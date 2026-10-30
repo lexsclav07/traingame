@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://5522qkd0is0l"
 path.bptc="res://.godot/imported/teak_normal.png-3a1301c86120f04430c1586b618da952.bptc.ctex"
+path.astc="res://.godot/imported/teak_normal.png-3a1301c86120f04430c1586b618da952.astc.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/teak_normal.png"
-dest_files=["res://.godot/imported/teak_normal.png-3a1301c86120f04430c1586b618da952.bptc.ctex"]
+dest_files=["res://.godot/imported/teak_normal.png-3a1301c86120f04430c1586b618da952.bptc.ctex", "res://.godot/imported/teak_normal.png-3a1301c86120f04430c1586b618da952.astc.ctex"]
 
 [params]
 

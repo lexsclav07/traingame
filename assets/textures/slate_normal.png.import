@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://22qs40gdo8d3"
 path.bptc="res://.godot/imported/slate_normal.png-5fc6478127b28ec13b1528ccbd099ba3.bptc.ctex"
+path.astc="res://.godot/imported/slate_normal.png-5fc6478127b28ec13b1528ccbd099ba3.astc.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/slate_normal.png"
-dest_files=["res://.godot/imported/slate_normal.png-5fc6478127b28ec13b1528ccbd099ba3.bptc.ctex"]
+dest_files=["res://.godot/imported/slate_normal.png-5fc6478127b28ec13b1528ccbd099ba3.bptc.ctex", "res://.godot/imported/slate_normal.png-5fc6478127b28ec13b1528ccbd099ba3.astc.ctex"]
 
 [params]
 

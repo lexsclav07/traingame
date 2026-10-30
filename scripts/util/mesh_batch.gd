@@ -34,11 +34,24 @@ func is_empty() -> bool:
 	return _st.is_empty()
 
 
-## Append any mesh (all surfaces) transformed by xf.
+## Append any mesh (all surfaces) transformed by xf. Non-indexed meshes are
+## indexed first: SurfaceTool only draws through the index array once any
+## indexed part is present, so mixing the two would drop geometry.
 func mesh(key: String, mat: Material, m: Mesh, xf: Transform3D) -> void:
 	var st := surf(key, mat)
 	for i in range(m.get_surface_count()):
-		st.append_from(m, i, xf)
+		if m is PrimitiveMesh:
+			st.append_from(m, i, xf)
+			continue
+		var arrays := m.surface_get_arrays(i)
+		var idx = arrays[Mesh.ARRAY_INDEX]
+		if idx == null or (idx as PackedInt32Array).is_empty():
+			var tmp := SurfaceTool.new()
+			tmp.create_from(m, i)
+			tmp.index()
+			st.append_from(tmp.commit(), 0, xf)
+		else:
+			st.append_from(m, i, xf)
 
 
 func box(key: String, mat: Material, size: Vector3, xf: Transform3D) -> void:

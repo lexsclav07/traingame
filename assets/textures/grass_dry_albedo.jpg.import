@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://b6o8fna5lh3yo"
 path.s3tc="res://.godot/imported/grass_dry_albedo.jpg-5f563e01eb171a326d7d03a0a487eebd.s3tc.ctex"
+path.etc2="res://.godot/imported/grass_dry_albedo.jpg-5f563e01eb171a326d7d03a0a487eebd.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/grass_dry_albedo.jpg"
-dest_files=["res://.godot/imported/grass_dry_albedo.jpg-5f563e01eb171a326d7d03a0a487eebd.s3tc.ctex"]
+dest_files=["res://.godot/imported/grass_dry_albedo.jpg-5f563e01eb171a326d7d03a0a487eebd.s3tc.ctex", "res://.godot/imported/grass_dry_albedo.jpg-5f563e01eb171a326d7d03a0a487eebd.etc2.ctex"]
 
 [params]
 
