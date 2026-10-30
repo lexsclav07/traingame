@@ -99,10 +99,17 @@ func build(r: float, mn: float, mx: float, major: float, minor: float, label_txt
 	# glass
 	var gm := MU.glass(Color(0.8, 0.85, 0.9, 0.06))
 	MU.cyl(self, r * 1.0, 0.002, Vector3(0, 0, 0.012), gm, Vector3(90, 0, 0), 24)
+	if is_inside_tree():
+		_bake_face.call_deferred()
+
+
+var _baking := false
 
 
 func _ready() -> void:
-	_bake_face()
+	# usually added to the tree before build() runs; build() starts the bake then
+	if not _p.is_empty():
+		_bake_face()
 
 
 ## Flat disc facing +Z with UVs mapping the unit square onto it.
@@ -141,8 +148,9 @@ func _needle_mesh(r: float) -> ArrayMesh:
 
 ## Draw the face into a SubViewport, then keep it as a mipmapped texture.
 func _bake_face() -> void:
-	if DisplayServer.get_name() == "headless":
+	if _baking or _p.is_empty() or DisplayServer.get_name() == "headless":
 		return
+	_baking = true
 	var px := 512 if radius > 0.06 else 384
 	var vp := SubViewport.new()
 	vp.size = Vector2i(px, px)

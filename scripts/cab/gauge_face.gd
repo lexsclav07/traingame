@@ -76,9 +76,9 @@ func _draw() -> void:
 		var ts2 := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2)
 		draw_string(font, c + Vector2(-ts2.x * 0.5, R * 0.42), title, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, ink)
 	if unit != "":
-		var fs3 := int(R * 0.085)
+		var fs3 := int(R * 0.09)
 		var ts3 := font.get_string_size(unit, HORIZONTAL_ALIGNMENT_LEFT, -1, fs3)
-		draw_string(font, c + Vector2(-ts3.x * 0.5, -R * 0.2), unit, HORIZONTAL_ALIGNMENT_LEFT, -1, fs3, ink.lerp(face_col, 0.25))
+		draw_string(font, c + Vector2(-ts3.x * 0.5, -R * 0.24), unit, HORIZONTAL_ALIGNMENT_LEFT, -1, fs3, ink.lerp(face_col, 0.12))
 	if extra != "":
 		var fs4 := int(R * 0.06)
 		var ts4 := font.get_string_size(extra, HORIZONTAL_ALIGNMENT_LEFT, -1, fs4)
