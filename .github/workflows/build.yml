@@ -1,0 +1,69 @@
+name: Test and build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GODOT_VERSION: "4.6.2"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Godot and export templates
+        run: |
+          base=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          wget -q $base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          wget -q $base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          unzip -q Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 godot
+          tdir=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p $tdir /tmp/tpl
+          unzip -q Godot_v${GODOT_VERSION}-stable_export_templates.tpz -d /tmp/tpl
+          mv /tmp/tpl/templates/* $tdir/
+
+      - name: Import project
+        run: timeout 300 ./godot --headless --path . --import || true
+
+      - name: Parse every script
+        run: timeout 300 ./godot --headless --path . -s res://tests/parse_all.gd
+
+      - name: Physics checks (A4 Mallard)
+        run: timeout 600 ./godot --headless --path . -s res://tests/run_sim_test.gd -- a4
+
+      - name: Physics checks (Mariyung)
+        run: timeout 600 ./godot --headless --path . -s res://tests/run_sim_test.gd -- mariyung
+
+      - name: Export Linux and Windows builds
+        run: |
+          mkdir -p build/linux build/windows
+          timeout 600 ./godot --headless --path . --export-release "Linux" build/linux/traingame.x86_64
+          timeout 600 ./godot --headless --path . --export-release "Windows Desktop" build/windows/traingame.exe
+          ls -la build/linux build/windows
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: traingame-linux
+          path: build/linux
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: traingame-windows
+          path: build/windows
+
+      - name: Publish a release for version tags
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd build
+          zip -qr traingame-linux.zip linux
+          zip -qr traingame-windows.zip windows
+          gh release create "$GITHUB_REF_NAME" traingame-linux.zip traingame-windows.zip --generate-notes
