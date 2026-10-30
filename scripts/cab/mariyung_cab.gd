@@ -55,7 +55,9 @@ func build(cab_root: Node3D) -> void:
 		pivot.rotation_degrees = Vector3(29.7, 0, 0)
 		var arm := Node3D.new()
 		pivot.add_child(arm)
-		MU.box(arm, Vector3(0.025, 0.95, 0.015), Vector3(0, 0.48, 0.02), black)
+		# arm and blade sit outside the glass
+		MU.box(arm, Vector3(0.012, 0.95, 0.01), Vector3(0, 0.48, -0.05), black)
+		MU.box(arm, Vector3(0.02, 0.06, 0.02), Vector3(0, 0.02, -0.045), black)
 		wipers.append(arm)
 
 	# ------------------------------------------------------------- desk

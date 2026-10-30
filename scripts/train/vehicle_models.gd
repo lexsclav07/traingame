@@ -208,8 +208,6 @@ static func _mariyung_nose(v: Vehicle, m: Node3D, b: MeshBatch, white: Material,
 		var tl := MU.lamp(Color(1.0, 0.05, 0.03), 0.0)
 		MU.box(m, Vector3(0.14, 0.09, 0.03), Vector3(sx * 0.8, 1.7, 0.375), tl)
 		v.tail_lamps.append(tl)
-		# exterior wiper arm parked along the bottom of the screen
-		_b(b, black, Vector3(0.9, 0.025, 0.02), Vector3(sx * 0.55, 2.3, 0.56), Vector3(29.7, 0, sx * -4.0))
 		# grab handle and step at the cab door
 		_c(b, MU.mat(Color(0.7, 0.7, 0.72), 0.3, 0.9, "handrail"), 0.016, 0.9, Vector3(sx * 1.53, 2.0, 2.45), Vector3.ZERO, 8)
 		_b(b, black, Vector3(0.12, 0.04, 0.5), Vector3(sx * 1.48, 0.62, 2.4))

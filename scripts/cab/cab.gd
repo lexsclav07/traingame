@@ -24,7 +24,7 @@ func add_fill(pos: Vector3, rng: float, energy: float, col := Color(1.0, 0.97, 0
 	l.omni_range = rng
 	l.omni_attenuation = 0.8
 	l.shadow_enabled = false
-	l.light_specular = 0.15
+	l.light_specular = 0.0
 	l.light_energy = 0.0
 	add_child(l)
 	l.position = pos
