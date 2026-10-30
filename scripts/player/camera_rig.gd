@@ -20,6 +20,7 @@ var ext_dist := 30.0
 var line_s := 0.0
 var line_side := 1.0
 var hovered: CabControl
+var picking := true       # hover-highlight controls under the mouse (off for screenshots)
 var dragging: CabControl
 var drag_button := 0
 var highlight: MeshInstance3D
@@ -126,7 +127,7 @@ func update_camera(delta: float) -> void:
 			var pos := f.origin + Vector3(0, 2.2, 0)
 			var target := train.vehicles[0].global_position + Vector3(0, 2.0, 0)
 			cam.global_transform = Transform3D(Basis(), pos).looking_at(target, Vector3.UP)
-	if mode == "cab":
+	if mode == "cab" and picking:
 		_pick()
 	if dragging:
 		_place_highlight(dragging)

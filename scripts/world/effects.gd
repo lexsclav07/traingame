@@ -32,19 +32,41 @@ func _emitter(parent: Node3D, amount: int, life: float, size: float, grow: float
 	p.local_coords = false
 	p.emitting = true
 	p.amount_ratio = 0.0
+	p.draw_order = GPUParticles3D.DRAW_ORDER_VIEW_DEPTH
 	p.visibility_aabb = AABB(Vector3(-60, -20, -60), Vector3(120, 80, 120))
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var qm := QuadMesh.new()
 	qm.size = Vector2(size, size)
 	var m := StandardMaterial3D.new()
-	m.albedo_texture = _soft_tex()
+	var puff := TX.t("smoke_puff")
+	m.albedo_texture = puff if puff else _soft_tex()
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.billboard_keep_scale = true
 	m.vertex_color_use_as_albedo = true
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	# lit by the sun and sky (dark at night, glowing edges against the sun)
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+	m.diffuse_mode = BaseMaterial3D.DIFFUSE_LAMBERT_WRAP
+	m.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+	m.backlight_enabled = true
+	m.backlight = Color(0.55, 0.55, 0.55)
+	m.roughness = 1.0
 	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	if RenderingServer.get_current_rendering_method() != "gl_compatibility":
+		m.proximity_fade_enabled = true
+		m.proximity_fade_distance = 0.8
 	qm.material = m
 	p.draw_pass_1 = qm
 	var pm := ParticleProcessMaterial.new()
+	pm.angle_min = -180.0
+	pm.angle_max = 180.0
+	pm.angular_velocity_min = -25.0
+	pm.angular_velocity_max = 25.0
+	pm.turbulence_enabled = true
+	pm.turbulence_noise_strength = 1.2
+	pm.turbulence_noise_scale = 6.0
+	pm.turbulence_influence_min = 0.05
+	pm.turbulence_influence_max = 0.15
 	var curve := Curve.new()
 	curve.add_point(Vector2(0, 0.35))
 	curve.add_point(Vector2(1, 1.0))

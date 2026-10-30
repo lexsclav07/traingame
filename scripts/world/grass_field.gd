@@ -38,6 +38,7 @@ func setup(ter: TerrainBuilder, camera: Camera3D, quality: int) -> void:
 	var tm: ShaderMaterial = terrain.terrain_material
 	if tm:
 		mat.set_shader_parameter("ground_blend", 0.75)
+		mat.set_shader_parameter("up_normal", 0.75)
 		mat.set_shader_parameter("ground_tex", tm.get_shader_parameter("grass_alb"))
 		mat.set_shader_parameter("ground_scale", 0.22)
 		mat.set_shader_parameter("macro_tex", tm.get_shader_parameter("macro_tex"))

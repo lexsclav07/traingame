@@ -4,6 +4,7 @@ extends Control
 var gs := GameSettings
 var ui := {}
 var desc: RichTextLabel
+var bg_tex: TextureRect
 
 
 func _ready() -> void:
@@ -12,8 +13,32 @@ func _ready() -> void:
 	bg.color = Color(0.06, 0.08, 0.11)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
+	# in-game picture of the selected train behind the menu, darkened on the
+	# left so the options stay readable
+	bg_tex = TextureRect.new()
+	bg_tex.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	bg_tex.modulate = Color(0.85, 0.85, 0.88)
+	add_child(bg_tex)
+	var g := Gradient.new()
+	g.set_color(0, Color(0.03, 0.04, 0.06, 0.9))
+	g.set_color(1, Color(0.03, 0.04, 0.06, 0.25))
+	g.add_point(0.55, Color(0.03, 0.04, 0.06, 0.72))
+	var gt := GradientTexture2D.new()
+	gt.gradient = g
+	gt.fill_from = Vector2(0, 0)
+	gt.fill_to = Vector2(1, 0)
+	gt.width = 256
+	gt.height = 4
+	var shade := TextureRect.new()
+	shade.texture = gt
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	shade.stretch_mode = TextureRect.STRETCH_SCALE
+	add_child(shade)
 	var stripe := ColorRect.new()
-	stripe.color = Color(0.1, 0.19, 0.42)
+	stripe.color = Color(0.1, 0.19, 0.42, 0.85)
 	stripe.position = Vector2(0, 0)
 	stripe.size = Vector2(4000, 120)
 	add_child(stripe)
@@ -50,7 +75,7 @@ func _ready() -> void:
 	ui["load"] = _slider(grid, "Passenger load", 0.0, 1.0, gs.passenger_load)
 	ui["aif"] = _check(grid, "Mallard: AI fireman", gs.ai_fireman)
 	ui["aid"] = _check(grid, "Mallard: AI driver (you fire)", gs.ai_driver)
-	_option(grid, "gfx", "Graphics", ["Low", "Medium", "High"], gs.graphics_quality)
+	_option(grid, "gfx", "Graphics", ["Low", "Medium", "High", "Ultra"], gs.graphics_quality)
 	ui["sens"] = _slider(grid, "Mouse sensitivity", 0.05, 0.6, gs.mouse_sensitivity)
 	ui["vol"] = _slider(grid, "Volume", 0.0, 1.0, gs.master_volume)
 	ui["tips"] = _check(grid, "Control tooltips", gs.show_tooltips)
@@ -149,6 +174,8 @@ Route: the Stoke Bank Loop, a fictional 43 km 1930s East Coast Main Line-style c
 		"\n\n[b]Prepared:[/b] the train has been stabled with power available / a banked fire. You do the crew preparation, tests and departure.",
 		"\n\n[b]Ready to drive:[/b] prepared, tested and ready to depart."]
 	desc.text = txt + starts[st]
+	var pic := "res://assets/ui/menu_%s.jpg" % ("mariyung" if t == 0 else "a4")
+	bg_tex.texture = load(pic) if ResourceLoader.exists(pic) else null
 
 
 func _start() -> void:

@@ -51,10 +51,21 @@ func _ready() -> void:
 	info.anchor_bottom = 1.0
 	info.offset_top = -40
 	info.offset_left = 16
+	info.offset_top = -46
+	info.offset_left = 12
 	info.add_theme_font_size_override("font_size", 17)
-	info.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+	info.add_theme_color_override("font_color", Color(0.93, 0.95, 0.98))
+	info.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.6))
 	info.add_theme_constant_override("shadow_offset_x", 1)
 	info.add_theme_constant_override("shadow_offset_y", 1)
+	var isb := StyleBoxFlat.new()
+	isb.bg_color = Color(0.03, 0.04, 0.06, 0.55)
+	isb.set_corner_radius_all(6)
+	isb.content_margin_left = 12
+	isb.content_margin_right = 12
+	isb.content_margin_top = 5
+	isb.content_margin_bottom = 5
+	info.add_theme_stylebox_override("normal", isb)
 	root.add_child(info)
 
 	details = Label.new()

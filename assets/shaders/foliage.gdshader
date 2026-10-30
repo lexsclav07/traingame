@@ -15,6 +15,9 @@ uniform float ao_bottom = 0.0;      // darken the base of grass cards
 // grass: pull the colour toward the terrain it grows from (same texture,
 // scale and macro tint as the terrain shader) so tufts sit in the ground
 uniform float ground_blend = 0.0;
+// grass: bend the shading normal toward 'up' so tufts are lit like the
+// ground they stand in rather than as dark flat cards
+uniform float up_normal = 0.0;
 uniform sampler2D ground_tex : source_color, filter_linear_mipmap, repeat_enable;
 uniform float ground_scale = 0.22;
 uniform sampler2D macro_tex : filter_linear_mipmap, repeat_enable;
@@ -61,6 +64,10 @@ void fragment() {
 	}
 	if (ao_bottom > 0.0) {
 		ALBEDO *= mix(1.0, 1.0 - ao_bottom, smoothstep(0.4, 1.0, v_ao));
+	}
+	if (up_normal > 0.0) {
+		vec3 up_v = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+		NORMAL = normalize(mix(NORMAL, up_v, up_normal));
 	}
 	ALPHA = c.a;
 	ALPHA_SCISSOR_THRESHOLD = alpha_cut;

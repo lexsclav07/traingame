@@ -51,6 +51,8 @@ func _process(_d: float) -> bool:
 func _setup(spec: String) -> void:
 	var p := spec.split(":")
 	var rig = game.rig
+	rig.picking = false
+	rig.highlight.visible = false
 	settle = 5
 	match p[0]:
 		"cab":
