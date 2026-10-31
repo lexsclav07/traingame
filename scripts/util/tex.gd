@@ -149,6 +149,21 @@ static func cutout(albedo: String, tint := Color.WHITE, rough := 0.7, metal := 0
 	return m
 
 
+## A rain-soaked copy of a material: darker and glossier (cached).
+static func wet(m: Material) -> Material:
+	if not (m is StandardMaterial3D):
+		return m
+	var k := "wet|%d" % m.get_instance_id()
+	if _mats.has(k):
+		return _mats[k]
+	var w := (m as StandardMaterial3D).duplicate() as StandardMaterial3D
+	w.albedo_color = w.albedo_color.darkened(0.32)
+	w.roughness = clampf(w.roughness * 0.45, 0.08, 1.0)
+	w.metallic_specular = 0.7
+	_mats[k] = w
+	return w
+
+
 static func shader_mat(path: String) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = load(path)

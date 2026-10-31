@@ -36,6 +36,11 @@ func build(parent: Node3D, t: Track, ter: TerrainBuilder, quality: int) -> void:
 	var pad_mesh := BoxMesh.new()
 	pad_mesh.size = Vector3(0.2, 0.012, 0.22)
 	var pad_mat := MU.mat(Color(0.06, 0.06, 0.06), 0.9)
+	if GameSettings.weather == "rain":
+		# wet: darker, glossier ballast, sleepers and rail
+		ballast_mat = TX.wet(ballast_mat)
+		sleeper_mat = TX.wet(sleeper_mat)
+		rail_mat = TX.wet(rail_mat)
 	var rail_profile := _rail_profile()
 	var head_profile := PackedVector2Array([Vector2(-0.034, 0.0015), Vector2(0.034, 0.0015)])
 	var spacing: float = track.route["sleeper_spacing"]

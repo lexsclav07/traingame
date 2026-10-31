@@ -28,6 +28,9 @@ func build(parent: Node3D, t: Track, ter: TerrainBuilder, q: int) -> void:
 	theme = t.route["theme"]
 	quality = q
 	_materials()
+	if GameSettings.weather == "rain":
+		for k in ["paving", "coping", "conc", "tactile", "brick", "stone", "timber"]:
+			_m[k] = TX.wet(_m[k])
 	var root := Node3D.new()
 	root.name = "Scenery"
 	parent.add_child(root)
@@ -42,6 +45,8 @@ func build(parent: Node3D, t: Track, ter: TerrainBuilder, q: int) -> void:
 	_trough_boards(root)
 	_fences(root, q)
 	_signals(root)
+	if theme == "nsw":
+		_cable_troughing(root, q)
 
 
 func _materials() -> void:
@@ -1020,6 +1025,55 @@ func _fences(root: Node3D, q: int) -> void:
 				wmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
+# --------------------------------------------------------- cable troughing
+## Concrete cable troughing along the cess (signalling and power cables),
+## in chunks so the far ones are culled.
+func _cable_troughing(root: Node3D, q: int) -> void:
+	var node := Node3D.new()
+	node.name = "CableTroughing"
+	root.add_child(node)
+	var mat := TX.pbr("concrete_albedo", "concrete_normal", Color(0.72, 0.71, 0.68), 0.92, 0.0, Vector3.ONE * 1.2, true, 1.0, "s_trough")
+	var lat := -3.35
+	var y0 := -0.64
+	var prof := PackedVector2Array([Vector2(lat - 0.17, y0 + 0.2), Vector2(lat + 0.17, y0 + 0.2), Vector2(lat + 0.17, y0 - 0.1), Vector2(lat - 0.17, y0 - 0.1)])
+	var lid := PackedVector2Array([Vector2(lat - 0.18, y0 + 0.215), Vector2(lat + 0.18, y0 + 0.215)])
+	var chunk := 500.0
+	var vis: float = [250.0, 400.0, 550.0, 750.0][q]
+	var c := 0.0
+	while c < track.length - 1.0:
+		var frames := []
+		var dists := PackedFloat32Array()
+		var profs := []
+		var lids := []
+		var s := c
+		var e := minf(c + chunk, track.length)
+		while s <= e + 0.01:
+			if terrain.is_bridge(s) or _on_platform(s, 10.0):
+				if frames.size() > 1:
+					_trough_piece(node, mat, profs, lids, frames, dists, vis)
+				frames = []
+				dists = PackedFloat32Array()
+				profs = []
+				lids = []
+			else:
+				frames.append(track.flat_frame_at(s))
+				dists.append(s)
+				profs.append(prof)
+				lids.append(lid)
+			s += 3.0
+		if frames.size() > 1:
+			_trough_piece(node, mat, profs, lids, frames, dists, vis)
+		c += chunk
+
+
+func _trough_piece(node: Node3D, mat: Material, profs: Array, lids: Array, frames: Array, dists: PackedFloat32Array, vis: float) -> void:
+	var mi := _strip_mesh(node, mat, profs, frames, dists, true, true, "Trough")
+	mi.visibility_range_end = vis
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var li := _strip_mesh(node, mat, lids, frames, dists, false, false, "Lids")
+	li.visibility_range_end = vis
+
+
 # ----------------------------------------------------------------- signals
 ## Cosmetic signals showing a clear aspect: NSW colour lights on the automatic
 ## sections; ECML upper-quadrant semaphores (distant, home, starter) worked
@@ -1090,6 +1144,12 @@ func _colour_light(b: MeshBatch, xf: Transform3D) -> void:
 		else:
 			b.cyl("sig_off", off, lens_xf, 0.1, 0.1, 0.02, 14)
 		b.box("sig_black", black, Vector3(0.3, 0.025, 0.22), head * Transform3D(Basis(Vector3.RIGHT, -0.25), Vector3(0, ly + 0.14, 0.23)))
+	# lineside equipment case on a concrete plinth, further from the track
+	var case_mat := TX.painted(Color(0.55, 0.57, 0.58), 0.5, 0.4, "grime", 0.8, 0.0, "s_case")
+	b.box("sig_conc", _m["conc"], Vector3(1.3, 0.25, 0.8), xf * Transform3D(Basis(), Vector3(-1.6, 0.1, -0.6)))
+	b.box("sig_case", case_mat, Vector3(1.1, 1.45, 0.62), xf * Transform3D(Basis(), Vector3(-1.6, 0.95, -0.6)))
+	b.box("sig_case", case_mat, Vector3(1.18, 0.06, 0.7), xf * Transform3D(Basis(), Vector3(-1.6, 1.7, -0.6)))
+	b.box("sig_black", _m["black"], Vector3(0.04, 0.12, 0.02), xf * Transform3D(Basis(), Vector3(-1.2, 1.0, -0.28)))
 	# identification plate and ladder
 	b.box("sig_white", _m["white"], Vector3(0.32, 0.22, 0.02), xf * Transform3D(Basis(), Vector3(0, 2.6, 0.11)))
 	for rx in [-0.18, 0.18]:

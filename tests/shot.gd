@@ -3,7 +3,7 @@ extends SceneTree
 ## usage: -s res://tests/shot.gd -- <a4|mariyung> <cold|prep|ready> <day|dusk|night> <clear|rain> <quality 0-3> <prefix> <shots>
 ## shots: comma list of  cab:<view>:<yaw>:<pitch>  |  ext:<yaw>:<pitch>:<dist>  |  line  |
 ##        free:<s>:<lateral>:<height>:<yaw deg>:<pitch deg>  |  move:<metres>:<speed>  |
-##        ctl:<id>:<value>  |  sim:<variable>:<value>  |  wait:<frames>
+##        ctl:<id>:<value>  |  sim:<variable>:<value>  |  wait:<frames>  |  run:<seconds>
 var game: Node
 var shots: Array = []
 var idx := 0
@@ -42,7 +42,7 @@ func _process(_d: float) -> bool:
 	wait += 1
 	if wait >= settle:
 		var spec: String = shots[idx]
-		if not (spec.begins_with("move") or spec.begins_with("ctl") or spec.begins_with("sim") or spec.begins_with("wait")):
+		if not (spec.begins_with("move") or spec.begins_with("ctl") or spec.begins_with("sim") or spec.begins_with("wait") or spec.begins_with("run")):
 			root.get_viewport().get_texture().get_image().save_png(_out() + "%s_%02d.png" % [prefix, idx])
 			print("saved %s_%02d (%s)" % [prefix, idx, spec])
 		idx += 1
@@ -86,6 +86,14 @@ func _setup(spec: String) -> void:
 		"wait":
 			# wait:<frames> (let the game run, e.g. wipers sweeping)
 			settle = int(p[1])
+		"run":
+			# run:<seconds> of simulation without rendering it
+			for i in range(int(float(p[1]) / 0.05)):
+				game.sim.step(0.05)
+				game.train.physics_step(0.05)
+			game.train.update_visuals()
+			game.cab.call("update_visuals", game.sim, 0.05)
+			settle = 2
 		"move":
 			# jump the train along the line and give it speed (no rendering needed)
 			var secs := float(p[1])

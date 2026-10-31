@@ -146,10 +146,11 @@ func _build_a4() -> void:
 	if gs.time_of_day != "day":
 		for lm in loco.head_lamps:
 			(lm as StandardMaterial3D).emission_energy_multiplier = 2.5
-		var cw := MU.mat(Color(0.05, 0.055, 0.06), 0.04, 0.0, "coach_win")
-		cw.emission_enabled = true
-		cw.emission = Color(1.0, 0.78, 0.48)
-		cw.emission_energy_multiplier = 0.8
+	# (the material is shared and cached, so set it either way)
+	var cw := MU.mat(Color(0.05, 0.055, 0.06), 0.04, 0.0, "coach_win")
+	cw.emission_enabled = gs.time_of_day != "day"
+	cw.emission = Color(1.0, 0.78, 0.48)
+	cw.emission_energy_multiplier = 0.8 if gs.time_of_day != "day" else 0.0
 
 
 func _on_message(t: String, kind: String) -> void:
