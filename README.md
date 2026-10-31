@@ -14,8 +14,9 @@ Made by **Lex Sclavos**.
 
 | Pacific National 92 class pair on a coal train | |
 |---|---|
-| ![Two 92 class at the head of a loaded coal train](docs/screenshots/c92_outside.jpg) | ![The 92 class driver's desk](docs/screenshots/c92_cab.jpg) |
-| ![The engine control panel opened: circuit breakers and engine start](docs/screenshots/c92_ecp.jpg) | ![The battery box opened on the walkway](docs/screenshots/c92_battery.jpg) |
+| ![9206 leading a loaded coal train through a cutting](docs/screenshots/c92_front.jpg) | ![The pair and the first hoppers](docs/screenshots/c92_outside.jpg) |
+| ![The 92 class driver's desk, displays live](docs/screenshots/c92_cab.jpg) | ![The engine control panel opened: circuit breakers and engine start](docs/screenshots/c92_ecp.jpg) |
+| ![The battery box opened on the walkway, isolating switch on](docs/screenshots/c92_battery.jpg) | ![The menu: wagons, load and start state](docs/screenshots/c92_menu.jpg) |
 
 ## The trains
 

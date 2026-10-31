@@ -3,7 +3,11 @@ extends SceneTree
 var frames := 0
 
 
+## usage: -s res://tests/menu_shot.gd [-- <train index>]
 func _initialize() -> void:
+	var a := OS.get_cmdline_user_args()
+	if a.size() > 0:
+		root.get_node("GameSettings").train = int(a[0])
 	root.add_child(load("res://scenes/main_menu.tscn").instantiate())
 
 
