@@ -2,7 +2,8 @@ extends SceneTree
 ## Flexible screenshot tool for graphics work.
 ## usage: -s res://tests/shot.gd -- <a4|mariyung> <cold|prep|ready> <day|dusk|night> <clear|rain> <quality 0-3> <prefix> <shots>
 ## shots: comma list of  cab:<view>:<yaw>:<pitch>  |  ext:<yaw>:<pitch>:<dist>  |  line  |
-##        free:<s>:<lateral>:<height>:<yaw deg>:<pitch deg>  |  move:<metres>:<speed>  |
+##        free:<s>:<lateral>:<height>:<yaw deg>:<pitch deg>  |  freeg:(same, height above the ground)  |
+##        move:<metres>:<speed>  |
 ##        ctl:<id>:<value>  |  sim:<variable>:<value>  |  wait:<frames>  |  run:<seconds>  |
 ##        xing:<crossing>:<metres short of it>:<speed>
 var game: Node
@@ -76,6 +77,14 @@ func _setup(spec: String) -> void:
 			var b: Basis = f.basis * Basis.from_euler(Vector3(deg_to_rad(float(p[5])), deg_to_rad(float(p[4])), 0))
 			rig.cam.fov = 62.0
 			rig.cam.global_transform = Transform3D(b, f.origin + Vector3.UP * float(p[3]))
+		"freeg":
+			# freeg:<s>:<lateral>:<height above the ground>:<yaw deg>:<pitch deg>
+			rig.mode = "free"
+			var fg: Transform3D = game.track.flat_frame_at(float(p[1]), float(p[2]))
+			var bg: Basis = fg.basis * Basis.from_euler(Vector3(deg_to_rad(float(p[5])), deg_to_rad(float(p[4])), 0))
+			var gy: float = game.terrain.mesh_height(fg.origin.x, fg.origin.z)
+			rig.cam.fov = 62.0
+			rig.cam.global_transform = Transform3D(bg, Vector3(fg.origin.x, gy + float(p[3]), fg.origin.z))
 		"ctl":
 			# ctl:<control id>:<value>
 			game.cab.c(p[1]).set_value(float(p[2]))

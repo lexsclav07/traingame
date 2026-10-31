@@ -400,7 +400,8 @@ func _spectacle_glass() -> ShaderMaterial:
 		spec_mat = TX.shader_mat("res://assets/shaders/windscreen.gdshader")
 		spec_mat.set_shader_parameter("drops_tex", TX.t("raindrops"))
 		spec_mat.set_shader_parameter("glass_size", Vector2(1.8, 1.24))     # box faces use a third of the UV range
-		spec_mat.set_shader_parameter("rain", 1.0 if GameSettings.weather == "rain" else 0.0)
+		spec_mat.set_shader_parameter("rain", {"rain": 1.0, "fog": 0.06}.get(GameSettings.weather, 0.0))
+		spec_mat.set_shader_parameter("drop_scale", 3.2 if GameSettings.weather == "fog" else 1.4)
 		spec_mat.set_shader_parameter("tint", Color(0.75, 0.82, 0.85, 0.08))
 	return spec_mat
 

@@ -59,7 +59,7 @@ func _leaf_mat(species: String) -> ShaderMaterial:
 	m.set_shader_parameter("tint", tint)
 	m.set_shader_parameter("tint_var", tvar)
 	m.set_shader_parameter("translucency", trans)
-	m.set_shader_parameter("wind_strength", 0.35 if GameSettings.weather == "rain" else 0.22)
+	m.set_shader_parameter("wind_strength", {"rain": 0.35, "fog": 0.06}.get(GameSettings.weather, 0.22))
 	m.set_shader_parameter("sway_height", 0.012)
 	leaf_mats[species] = m
 	return m

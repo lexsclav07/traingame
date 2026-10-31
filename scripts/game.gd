@@ -43,6 +43,7 @@ func _build() -> void:
 	terrain.setup(track, track.route)
 	terrain.build(self, q)
 	VegetationBuilder.new().build(self, track, terrain, q)
+	Animals.new().build(self, track, terrain, q)
 	TrackBuilder.new().build(self, track, terrain, q)
 	scenery = SceneryBuilder.new()
 	scenery.build(self, track, terrain, q)
@@ -67,6 +68,8 @@ func _build() -> void:
 	var daylight: float = {"day": 1.0, "dusk": 0.35, "night": 0.0}.get(gs.time_of_day, 1.0)
 	if gs.weather == "rain":
 		daylight *= 0.55
+	elif gs.weather == "fog":
+		daylight *= 0.7
 	if q >= 3 and RenderingServer.get_current_rendering_method() == "forward_plus":
 		daylight *= 0.6      # SDFGI already bounces some light in
 	cab.set_daylight(daylight)

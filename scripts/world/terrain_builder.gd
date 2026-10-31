@@ -538,7 +538,7 @@ func _terrain_material() -> ShaderMaterial:
 	m.set_shader_parameter("macro_tex", TX.t("macro_variation"))
 	m.set_shader_parameter("use_fields", 0.0 if nsw else 1.0)
 	m.set_shader_parameter("rock_scale", 0.06 if nsw else 0.1)
-	m.set_shader_parameter("wetness", 0.7 if GameSettings.weather == "rain" else 0.0)
+	m.set_shader_parameter("wetness", {"rain": 0.7, "fog": 0.3}.get(GameSettings.weather, 0.0))
 	if not nsw:
 		m.set_shader_parameter("grass_tint_dry", Color(1, 1, 1))
 	return m

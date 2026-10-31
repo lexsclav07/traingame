@@ -15,6 +15,7 @@ uniform float cloud_scale = 0.00012;
 uniform vec2 wind = vec2(4.0, 1.5);
 uniform float sky_energy = 1.0;
 uniform float night = 0.0;
+uniform float haze = 0.0;                        // fog: hides stars and moon, flattens the sky
 uniform float sun_size = 0.9997;
 uniform sampler2D cloud_tex : filter_linear_mipmap, repeat_enable;
 
@@ -41,9 +42,10 @@ void sky() {
 	if (LIGHT0_ENABLED && h > -0.02) {
 		float disk = smoothstep(sun_size, sun_size + 0.00015, mu);
 		if (night > 0.5) {
-			col += vec3(0.85, 0.88, 0.95) * disk * 1.2;
+			col += vec3(0.85, 0.88, 0.95) * disk * 1.2 * (1.0 - haze);
 		} else {
-			col += LIGHT0_COLOR * disk * 30.0;
+			// in fog the sun is a pale, flat disc
+			col += LIGHT0_COLOR * disk * mix(30.0, 1.2, haze);
 		}
 	}
 	// stars
@@ -51,7 +53,7 @@ void sky() {
 		vec3 p = d * 420.0;
 		float s = hash(floor(p));
 		float star = step(0.9985, s) * (0.5 + 0.5 * sin(TIME * 2.0 + s * 300.0));
-		col += vec3(star) * night * smoothstep(0.0, 0.25, h) * 1.4;
+		col += vec3(star) * night * smoothstep(0.0, 0.25, h) * 1.4 * (1.0 - haze);
 	}
 	// clouds on a flat layer 2 km up
 	if (h > 0.0) {
@@ -72,5 +74,6 @@ void sky() {
 	if (h < 0.0) {
 		col = mix(horizon_color, ground_color, clamp(-h * 6.0, 0.0, 1.0));
 	}
+	col = mix(col, horizon_color, haze * 0.8);
 	COLOR = col * sky_energy;
 }

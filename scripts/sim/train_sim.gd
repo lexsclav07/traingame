@@ -64,6 +64,9 @@ func fail(reason: String) -> void:
 
 
 func adhesion_mu(braking := false) -> float:
+	# a damp rail in fog or dew is often worse than one washed by heavy rain
+	if weather == "fog":
+		return 0.08 if braking else 0.13
 	var wet := weather == "rain"
 	if braking:
 		return 0.09 if wet else 0.15

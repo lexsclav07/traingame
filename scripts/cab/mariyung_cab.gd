@@ -52,7 +52,9 @@ func build(cab_root: Node3D) -> void:
 	screen_mat.set_shader_parameter("drops_tex", TX.t("raindrops"))
 	screen_mat.set_shader_parameter("wiper_a", Vector4(0.81, 0.075, 0.95, 1.0))
 	screen_mat.set_shader_parameter("wiper_b", Vector4(1.81, 0.075, 0.95, 1.0))
-	screen_mat.set_shader_parameter("rain", 1.0 if GameSettings.weather == "rain" else 0.0)
+	# rain, or the fine droplets that settle on the glass in fog
+	screen_mat.set_shader_parameter("rain", {"rain": 1.0, "fog": 0.06}.get(GameSettings.weather, 0.0))
+	screen_mat.set_shader_parameter("drop_scale", 3.2 if GameSettings.weather == "fog" else 1.4)
 	var wq := QuadMesh.new()
 	wq.size = Vector2(2.72, 1.94)
 	var ws := MeshInstance3D.new()

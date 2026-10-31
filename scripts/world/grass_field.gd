@@ -29,7 +29,7 @@ func setup(ter: TerrainBuilder, camera: Camera3D, quality: int) -> void:
 	mat.set_shader_parameter("alpha_cut", 0.4)
 	mat.set_shader_parameter("tint", Color(0.95, 0.95, 0.88) if nsw else Color(0.9, 1.0, 0.88))
 	mat.set_shader_parameter("tint_var", Color(0.85, 0.82, 0.7) if nsw else Color(0.8, 0.9, 0.75))
-	mat.set_shader_parameter("wind_strength", 0.5 if GameSettings.weather == "rain" else 0.32)
+	mat.set_shader_parameter("wind_strength", {"rain": 0.5, "fog": 0.1}.get(GameSettings.weather, 0.32))
 	mat.set_shader_parameter("sway_height", 0.35)
 	mat.set_shader_parameter("fade_radius", (radius_tiles + 0.3) * TILE)
 	mat.set_shader_parameter("ao_bottom", 0.3)

@@ -71,7 +71,7 @@ func _ready() -> void:
 	_option(grid, "start", "Start", gs.START_NAMES, gs.start_state)
 	_option(grid, "route", "Route", ["Train's own route", "Hawkesbury Loop (NSW, electrified)", "Stoke Bank Loop (ECML 1930s)"], ["auto", "nsw", "ecml"].find(gs.route))
 	_option(grid, "tod", "Time of day", ["Day", "Dusk", "Night"], ["day", "dusk", "night"].find(gs.time_of_day))
-	_option(grid, "weather", "Weather", ["Clear", "Rain (poor adhesion)"], ["clear", "rain"].find(gs.weather))
+	_option(grid, "weather", "Weather", ["Clear", "Rain (poor adhesion)", "Fog (damp rails)"], ["clear", "rain", "fog"].find(gs.weather))
 	ui["load"] = _slider(grid, "Passenger load", 0.0, 1.0, gs.passenger_load)
 	ui["aif"] = _check(grid, "Mallard: AI fireman", gs.ai_fireman)
 	ui["aid"] = _check(grid, "Mallard: AI driver (you fire)", gs.ai_driver)
@@ -186,7 +186,7 @@ func _start() -> void:
 	gs.start_state = (ui["start"] as OptionButton).selected
 	gs.route = ["auto", "nsw", "ecml"][(ui["route"] as OptionButton).selected]
 	gs.time_of_day = ["day", "dusk", "night"][(ui["tod"] as OptionButton).selected]
-	gs.weather = ["clear", "rain"][(ui["weather"] as OptionButton).selected]
+	gs.weather = ["clear", "rain", "fog"][(ui["weather"] as OptionButton).selected]
 	gs.passenger_load = (ui["load"] as HSlider).value
 	gs.ai_fireman = (ui["aif"] as CheckBox).button_pressed
 	gs.ai_driver = (ui["aid"] as CheckBox).button_pressed

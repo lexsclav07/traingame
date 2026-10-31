@@ -100,9 +100,9 @@ func setup(t: Train, c: Cab, start_state: int) -> void:
 	for id in cab.controls:
 		(cab.controls[id] as CabControl).changed.connect(_on_control)
 	var tod: String = GameSettings.time_of_day
-	ambient_t = {"day": 26.0, "dusk": 20.0, "night": 16.0}.get(tod, 24.0) - (4.0 if weather == "rain" else 0.0)
+	ambient_t = {"day": 26.0, "dusk": 20.0, "night": 16.0}.get(tod, 24.0) - {"rain": 4.0, "fog": 6.0}.get(weather, 0.0)
 	saloon_t = ambient_t if start_state == GameSettings.StartState.COLD else 22.5
-	mist = (0.75 if weather == "rain" else (0.4 if tod != "day" else 0.0)) if start_state == GameSettings.StartState.COLD else 0.0
+	mist = (0.75 if weather != "clear" else (0.4 if tod != "day" else 0.0)) if start_state == GameSettings.StartState.COLD else 0.0
 	match start_state:
 		GameSettings.StartState.COLD:
 			_setc("battery", 0)
@@ -743,12 +743,12 @@ func _lights() -> void:
 func _comfort(dt: float) -> void:
 	var cars := train.vehicles.size()
 	hvac_on = siv_on and _on("hvac") and _on("mcb_hvac")
-	var sun_load := 2.5 if GameSettings.time_of_day == "day" and weather != "rain" else 0.0
+	var sun_load := 2.5 if GameSettings.time_of_day == "day" and weather == "clear" else 0.0
 	var target := 22.5 if hvac_on else ambient_t + sun_load
 	saloon_t = move_toward(saloon_t, target, dt * (0.02 if hvac_on else 0.006))
 	# demister: heated screen and warm air (heat from the aux converter, fan from the battery)
 	demist_on = siv_on and bat_v > 80.0 and _on("demister")
-	var humid := 0.75 if weather == "rain" else (0.4 if GameSettings.time_of_day != "day" else 0.0)
+	var humid: float = {"rain": 0.75, "fog": 0.8}.get(weather, 0.4 if GameSettings.time_of_day != "day" else 0.0)
 	var m_target := 0.0 if demist_on else humid
 	mist = move_toward(mist, m_target, dt * (0.07 if demist_on else 0.004))
 	# train radio boots once the cab is active and its breaker is in

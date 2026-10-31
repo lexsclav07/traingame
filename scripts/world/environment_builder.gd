@@ -83,6 +83,7 @@ func build(parent: Node3D, route: Dictionary, time_of_day: String, weather: Stri
 	var rot: Vector3 = route.get("sun_rot", Vector3(-45, 30, 0))
 	var nsw: bool = route["theme"] == "nsw"
 	var rainy := weather == "rain"
+	var foggy := weather == "fog"
 	var p := {}
 	match time_of_day:
 		"dusk":
@@ -126,6 +127,28 @@ func build(parent: Node3D, route: Dictionary, time_of_day: String, weather: Stri
 		p["fog_d"] = 0.0011
 		p["amb"] *= 0.9
 		sun.shadow_enabled = false
+	if foggy:
+		# thick ground fog: the sun is a pale disc, colours wash out to the fog,
+		# and lamps and headlights glow in it
+		var fc: Color = {"day": Color(0.76, 0.78, 0.8), "dusk": Color(0.62, 0.53, 0.5), "night": Color(0.035, 0.04, 0.05)}.get(time_of_day, Color(0.76, 0.78, 0.8))
+		sun.light_energy *= 0.3
+		sun.shadow_blur = 3.0
+		p["zenith"] = (p["zenith"] as Color).lerp(fc, 0.8)
+		p["horizon"] = fc
+		p["lit"] = (p["lit"] as Color).lerp(fc, 0.7)
+		p["shadow"] = (p["shadow"] as Color).lerp(fc * 0.92, 0.7)
+		p["cover"] = 0.8
+		p["fog"] = fc
+		p["fog_d"] = 0.005
+		p["amb"] = (p["amb"] as float) * 1.08
+		env.fog_sky_affect = 0.92
+		env.fog_aerial_perspective = 0.2
+		sky_mat.set_shader_parameter("haze", 1.0)
+		if night:
+			# lamps bloom into halos in the murk
+			env.glow_hdr_threshold = 0.75
+			env.glow_intensity = 0.9
+			env.glow_bloom = 0.12
 	sky_mat.set_shader_parameter("zenith_color", p["zenith"])
 	sky_mat.set_shader_parameter("horizon_color", p["horizon"])
 	sky_mat.set_shader_parameter("ground_color", p["ground"])
@@ -140,11 +163,13 @@ func build(parent: Node3D, route: Dictionary, time_of_day: String, weather: Stri
 	env.ambient_light_color = (p["ground"] as Color).lerp(Color(0.6, 0.58, 0.52), 0.5) * (0.15 if night else 1.0)
 	env.fog_light_color = p["fog"]
 	env.fog_density = p["fog_d"]
-	env.fog_sun_scatter = 0.25 if not night else 0.0
+	env.fog_sun_scatter = (0.25 if not foggy else 0.5) if not night else 0.0
 	if forward_plus and env.volumetric_fog_enabled:
 		# a little ground haze for depth and light shafts; more in rain
-		env.volumetric_fog_density = 0.0035 if rainy else (0.001 if time_of_day == "dusk" else 0.0003)
-		env.volumetric_fog_albedo = p["fog"]
+		env.volumetric_fog_density = 0.0035 if rainy else ((0.016 if night else 0.006) if foggy else (0.001 if time_of_day == "dusk" else 0.0003))
+		# fog droplets scatter light (lamps and headlights glow), even when the
+		# fog itself looks dark at night
+		env.volumetric_fog_albedo = Color(0.88, 0.9, 0.92) if foggy else p["fog"]
 
 
 ## Rain follows the camera so it is always around the player.

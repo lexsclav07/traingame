@@ -4,11 +4,13 @@ A realistic train-driving simulator about **starting up and driving** real train
 
 Made by **Lex Sclavos**.
 
-| Mariyung cab | LNER A4 footplate |
+| NSW D set "Mariyung" | LNER A4 "Mallard" |
 |---|---|
-| ![Mariyung cab](docs/screenshots/mariyung_cab.jpg) | ![A4 footplate](docs/screenshots/a4_cab.jpg) |
+| ![Mariyung cab, stopped at a level crossing with the booms down](docs/screenshots/mariyung_cab.jpg) | ![A4 footplate](docs/screenshots/a4_cab.jpg) |
 | ![Mariyung at Wattle Gully](docs/screenshots/mariyung_outside.jpg) | ![Mallard at Corby Glen](docs/screenshots/a4_outside.jpg) |
-| ![Wattle Gully station](docs/screenshots/nsw_station.jpg) | ![Mallard at dusk](docs/screenshots/a4_dusk.jpg) |
+| ![Wattle Gully station](docs/screenshots/nsw_station.jpg) | ![Mallard at the crossing gates at dusk](docs/screenshots/a4_dusk.jpg) |
+| ![A level crossing at night, booms down as a Mariyung approaches](docs/screenshots/nsw_crossing_night.jpg) | ![Mallard at Corby Glen on a foggy night](docs/screenshots/a4_fog_night.jpg) |
+| ![Rain on the Mariyung's windscreen](docs/screenshots/mariyung_rain.jpg) | ![Mariyung in fog](docs/screenshots/mariyung_fog.jpg) |
 
 ## The trains
 
@@ -21,7 +23,7 @@ Simulated systems:
 - **Pantograph** with a battery-powered auxiliary compressor to raise it when the main reservoir is empty, plus line voltage.
 - **High-speed circuit breaker** and **auxiliary converter (SIV)**, which powers the 415 V AC compressor, battery charger, HVAC and lights.
 - **Main reservoir** air with compressor governor, **spring parking brake** (needs 500 kPa to release).
-- **Combined traction/brake controller**: P1-P4 power, B1-B7 blended regenerative + EP friction brakes, and EB. Jerk limiting, holding brake at a stand, wheel slip and wheel-slide protection, rain reduces adhesion.
+- **Combined traction/brake controller**: P1-P4 power, B1-B7 blended regenerative + EP friction brakes, and EB. Jerk limiting, holding brake at a stand, wheel slip and wheel-slide protection, rain reduces adhesion and a damp rail in fog is worse still.
 - **Direction controller** with interlocks, **plug doors** (left/right release, close with chimes, traction interlock, wrong-side warning).
 - **Vigilance** (60 s, lamp, buzzer, penalty), **driver's safety pedal**, **emergency stop** mushroom, **EB reset** procedure.
 - **ETCS**: Start of Mission (DATA, START), Staff Responsible until the first balise, then Full Supervision with braking curves, a warning at +2 km/h, service brake intervention at +5 and an emergency trip at +10.
@@ -65,10 +67,11 @@ The physics is tested headlessly (`tests/`), and these checks run on every push:
 
 ## Graphics
 Everything you see is generated: the models are built in code and the textures come from `tools/gen_textures.py`.
-- **Sky** with drifting clouds lit by the sun, a moon and stars at night, and overcast rain. **AgX** tone mapping.
-- **Rain on the glass**: drops build up on the windscreen and refract the view until the wiper blades sweep them away; condensation mists the screen from the inside.
+- **Sky** with drifting clouds lit by the sun, a moon and stars at night, overcast rain, and thick **fog** that washes the landscape out to grey within a few hundred metres, with lamps and headlights glowing in it. **AgX** tone mapping.
+- **Rain on the glass**: drops build up on the windscreen and refract the view until the wiper blades sweep them away (in fog, a fine film of droplets settles more slowly); condensation mists the screen from the inside.
 - **Terrain** blended from grass, sandstone or clay, leaf litter and gravel textures, with field patterns of pasture, stubble and plough on the ECML. Distant hills run out to the horizon.
 - **Procedural trees** (eucalypts and angophoras in NSW, oak and ash in Lincolnshire) with branches and leaves that sway in the wind, plus shrubs, rocks, hedgerows and dense grass around the camera.
+- **Animals**: Angus and Hereford cattle and mobs of grey kangaroos in the NSW paddocks; flocks of sheep and Friesian and Shorthorn cattle on the English pastures, grazing or standing about.
 - **Track** with ballast shoulders, concrete or timber sleepers, rusty rail webs and polished heads, girder bridges.
 - **Lineside**: overhead line masts with cantilevers and insulators, telegraph poles, colour-light or semaphore signals, boundary fences, a station with a building, canopy, lamps and seats, and houses, farms and water tanks that light up at night.
 - **Level crossings**: country roads cross both lines. On the NSW line the flashing lights, bells and boom gates are worked by the approaching train (about 25 s warning) and cars queue at the stop line, then drive on once the booms are up. On the 1930s line the crossing keeper swings big white timber gates across the road well before you arrive, and a "W" board 400 m out is your cue to whistle.
@@ -140,7 +143,7 @@ Press **F2** in game for a live checklist that ticks itself off.
 scripts/
   core/game_settings.gd   menu settings and key map (autoload)
   track/                  route definitions and the track geometry
-  world/                  terrain, vegetation, track meshes, overhead wiring, scenery, level crossings, sky, steam effects
+  world/                  terrain, vegetation, animals, track meshes, overhead wiring, scenery, level crossings, sky, steam effects
 assets/
   shaders/                sky, terrain, water and foliage shaders
   textures/               generated textures (see tools/gen_textures.py)

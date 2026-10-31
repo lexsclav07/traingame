@@ -362,7 +362,7 @@ func _engine(reg: float, n: float, v: float, dt: float) -> void:
 	# adhesion and wheelslip
 	var mu := adhesion_mu()
 	if _v("sanders") > 0.5:
-		mu += 0.07 if weather == "rain" else 0.05
+		mu += 0.07 if weather != "clear" else 0.05
 	var f_static := mu * ADHESIVE_KG * 9.81
 	var f_kin := f_static * 0.7
 	if not slipping and absf(te) > f_static and reg > 0.02:
