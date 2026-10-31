@@ -734,8 +734,8 @@ func _lights() -> void:
 	var lit := siv_on and _on("saloon_lights")
 	if not wm.emission_enabled:
 		wm.emission_enabled = true
-	wm.emission = Color(1.0, 0.95, 0.85)
-	wm.emission_energy_multiplier = (0.9 if GameSettings.time_of_day != "day" else 0.12) if lit else 0.0
+	wm.emission = Color(1.0, 0.92, 0.78)
+	wm.emission_energy_multiplier = (0.5 if GameSettings.time_of_day != "day" else 0.1) if lit else 0.0
 
 
 ## Saloon air-conditioning, cab demister, windscreen misting, train radio and

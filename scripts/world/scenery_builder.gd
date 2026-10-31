@@ -503,6 +503,7 @@ func _platforms(root: Node3D) -> void:
 		_station_building(b, s0, plen, side, top, back, bl, bmid)
 		_platform_furniture(node, b, s0, plen, side, top, edge, back, bmid, bl + 6.0)
 		b.commit(node, "StationBuildings")
+		_passengers(node, s0, plen, side, top, edge, back, bmid)
 
 
 ## Station building behind the platform with a canopy over the platform.
@@ -784,11 +785,47 @@ func _platform_furniture(node: Node3D, b: MeshBatch, s0: float, plen: float, sid
 		MU.label(nb, name_txt, Vector3(0, 2.3, -0.045), 0.0062, Color(0.97, 0.97, 0.95), Vector3(0, 180, 0), 96)
 
 
+## People waiting on the platform, thickest under the canopy.
+func _passengers(node: Node3D, s0: float, plen: float, side: float, top: float, edge: float, back: float, bmid: float) -> void:
+	var nsw := theme == "nsw"
+	var pb := MeshBatch.new()
+	var ppl := People.new(pb, theme, int(s0) + 11)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(s0) * 7 + 3
+	var count: int = [6, 12, 16, 22][quality]
+	if GameSettings.time_of_day == "night":
+		count = count / 2
+	var spots: Array[Vector2] = []
+	var tries := 0
+	while spots.size() < count and tries < count * 40:
+		tries += 1
+		var near_canopy := rng.randf() < 0.55
+		var ss := bmid + rng.randf_range(-12.0, 12.0) if near_canopy else rng.randf_range(s0 + 10.0, s0 + plen - 10.0)
+		var u := rng.randf_range(edge + 1.35, back - 0.9)
+		# keep clear of the lamp posts and canopy columns
+		if absf(u - (edge + 3.0)) < 0.45 or absf(u - (back - 4.2 + 0.6)) < 0.4:
+			continue
+		var ok := true
+		for sp in spots:
+			if absf(sp.x - ss) < 0.9 and absf(sp.y - u) < 0.9:
+				ok = false
+				break
+		if not ok:
+			continue
+		spots.append(Vector2(ss, u))
+		var f := track.flat_frame_at(ss, u * side)
+		var toward := f.basis.x * (-side)
+		var basis := Basis(Vector3.UP.cross(toward), Vector3.UP, toward).rotated(Vector3.UP, rng.randf_range(-1.1, 1.1))
+		ppl.person(Transform3D(basis, f.origin + Vector3.UP * top))
+	var mi := pb.commit(node, "Passengers")
+	mi.visibility_range_end = 600.0
+
+
 func set_night_lights(on: bool) -> void:
 	for l in platform_lights:
 		l.light_energy = 2.2 if on else 0.0
 	for m in night_mats:
-		m.emission_energy_multiplier = (2.2 if m == _m.get("window_lit") else 4.0) if on else 0.0
+		m.emission_energy_multiplier = (1.3 if m == _m.get("window_lit") else 4.0) if on else 0.0
 
 
 # --------------------------------------------------------------- buildings

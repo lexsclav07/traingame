@@ -195,18 +195,21 @@ static func _mariyung_nose(v: Vehicle, m: Node3D, b: MeshBatch, white: Material,
 	_b(b, MU.mat(Color(0.4, 0.4, 0.42), 0.35, 0.8, "coupler_face"), Vector3(0.38, 0.3, 0.02), Vector3(0, 0.98, -0.235))
 	# light clusters: black housing with headlight, marker (white) and tail (red)
 	for sx in [-1.0, 1.0]:
-		_b(b, black, Vector3(0.6, 0.42, 0.08), Vector3(sx * 0.88, 1.58, 0.4), Vector3(0, -sx * 8.0, 0))
+		# (on the flat lower front face of the nose, z = 0.15)
+		_b(b, black, Vector3(0.62, 0.42, 0.06), Vector3(sx * 0.9, 1.58, 0.13))
 		var hl := MU.lamp(Color(1.0, 0.96, 0.85), 0.0)
 		hl.albedo_color = Color(0.7, 0.72, 0.75)
-		var hm := MU.cyl(m, 0.085, 0.04, Vector3(sx * 1.02, 1.5, 0.37), hl, Vector3(90, 0, 0), 16)
+		var hm := MU.cyl(m, 0.085, 0.04, Vector3(sx * 1.04, 1.5, 0.085), hl, Vector3(90, 0, 0), 16)
 		hm.name = "HeadLamp"
-		MU.cyl(m, 0.085, 0.04, Vector3(sx * 0.8, 1.5, 0.37), hl, Vector3(90, 0, 0), 16)
+		MU.cyl(m, 0.085, 0.04, Vector3(sx * 0.8, 1.5, 0.085), hl, Vector3(90, 0, 0), 16)
+		_t(b, MU.mat(Color(0.55, 0.56, 0.58), 0.3, 0.8, "lamp_bezel"), 0.085, 0.1, Vector3(sx * 1.04, 1.5, 0.095), Vector3(90, 0, 0), 16, 6)
+		_t(b, MU.mat(Color(0.55, 0.56, 0.58), 0.3, 0.8, "lamp_bezel"), 0.085, 0.1, Vector3(sx * 0.8, 1.5, 0.095), Vector3(90, 0, 0), 16, 6)
 		v.head_lamps.append(hl)
 		var mk := MU.lamp(Color(1.0, 1.0, 0.95), 0.0)
-		MU.box(m, Vector3(0.14, 0.09, 0.03), Vector3(sx * 1.02, 1.7, 0.375), mk)
+		MU.box(m, Vector3(0.16, 0.08, 0.03), Vector3(sx * 1.04, 1.69, 0.09), mk)
 		v.marker_lamps.append(mk)
 		var tl := MU.lamp(Color(1.0, 0.05, 0.03), 0.0)
-		MU.box(m, Vector3(0.14, 0.09, 0.03), Vector3(sx * 0.8, 1.7, 0.375), tl)
+		MU.box(m, Vector3(0.16, 0.08, 0.03), Vector3(sx * 0.8, 1.69, 0.09), tl)
 		v.tail_lamps.append(tl)
 		# grab handle and step at the cab door
 		_c(b, MU.mat(Color(0.7, 0.7, 0.72), 0.3, 0.9, "handrail"), 0.016, 0.9, Vector3(sx * 1.53, 2.0, 2.45), Vector3.ZERO, 8)
@@ -337,6 +340,23 @@ static func _place_arm(arm: Node3D, from: Vector3, to: Vector3) -> void:
 static var garter_blue := Color(0.1, 0.19, 0.42)
 
 
+## Arch cross-section for the streamlined casing: vertical sides, then an
+## arch over the top whose shape runs from a ridged, straight-sided point
+## (k = 1) to a round top (k = 2). Same vertex layout as MU.rounded_ring.
+static func _arch_ring(w: float, yb: float, yt: float, k: float, z: float, n := 22) -> PackedVector3Array:
+	var pts := PackedVector3Array()
+	var ys := maxf(yb + 0.05, yt - w * 0.98)
+	pts.append(Vector3(-w, yb, z))
+	pts.append(Vector3(w, yb, z))
+	for i in range(n + 1):
+		var a := PI * i / n
+		var c := cos(a)
+		var x := w * c
+		var y := ys + (yt - ys) * pow(maxf(1.0 - pow(absf(c), k), 0.0), 1.0 / k)
+		pts.append(Vector3(x, y, z))
+	return pts
+
+
 static func _a4_mats() -> Dictionary:
 	return {
 		"blue": TX.painted(garter_blue, 0.24, 0.15, "grime", 0.3, 0.8, "garter_blue"),
@@ -370,26 +390,39 @@ static func a4_loco() -> Vehicle:
 	var steel: Material = mt["steel"]
 	var rod_steel: Material = mt["rod"]
 	# streamlined casing, front (black) then garter blue back to the cab
+	# The wedge front: cross-sections run from a sharp-ridged pointed arch at the
+	# buffer beam to the round top of the boiler casing ([z, bottom, top,
+	# half-width, pointedness: 1 = straight-sided ridge, 2 = round]).
 	var stations := [
-		[0.3, 0.92, 1.55, 0.86], [0.55, 0.98, 2.15, 1.08], [0.9, 1.04, 2.72, 1.24],
-		[1.4, 1.1, 3.2, 1.33], [2.0, 1.12, 3.55, 1.37], [2.8, 1.12, 3.82, 1.37],
-		[3.6, 1.12, 3.93, 1.37], [10.4, 1.12, 3.95, 1.37]]
+		[0.28, 0.9, 1.5, 0.84, 1.06], [0.42, 0.94, 1.86, 0.98, 1.1], [0.6, 0.98, 2.22, 1.1, 1.16],
+		[0.85, 1.02, 2.62, 1.22, 1.25], [1.15, 1.06, 2.97, 1.3, 1.36], [1.5, 1.1, 3.27, 1.35, 1.5],
+		[2.0, 1.12, 3.55, 1.37, 1.68], [2.8, 1.12, 3.82, 1.37, 1.9], [3.6, 1.12, 3.93, 1.37, 2.0],
+		[10.4, 1.12, 3.95, 1.37, 2.0]]
 	var front_rings := []
 	var back_rings := []
 	for i in range(stations.size()):
-		var s: Array = stations[i]
-		var r := MU.rounded_ring(s[3], s[1], s[2], s[3] * 0.92, s[0], 8)
-		if i <= 4:
+		var st: Array = stations[i]
+		var r := _arch_ring(st[3], st[1], st[2], st[4], st[0])
+		if i <= 6:
 			front_rings.append(r)
-		if i >= 4:
+		if i >= 6:
 			back_rings.append(r)
 	_l(b, black, front_rings, true, false)
 	_l(b, blue, back_rings, false, true)
-	# "cod's mouth" smokebox doors: hinged upper flap with a centre crease
-	_c(b, MU.mat(Color(0.06, 0.06, 0.065), 0.35, 0.3, "smokebox_door"), 0.42, 0.04, Vector3(0, 1.85, 0.62), Vector3(78, 0, 0), 24)
-	_b(b, mt["stainless"], Vector3(0.025, 1.3, 0.02), Vector3(0, 2.3, 0.7), Vector3(-52, 0, 0))
+	# "cod's mouth": the front opens as two doors split along the ridge
+	var ridge := []
+	for i in range(6):
+		var st: Array = stations[i]
+		ridge.append(Vector3(0, st[2] + 0.004, st[0]))
+	for i in range(ridge.size() - 1):
+		var pa: Vector3 = ridge[i]
+		var pb: Vector3 = ridge[i + 1]
+		var mid := (pa + pb) * 0.5
+		var ln := (pb - pa).length()
+		_b(b, mt["stainless"], Vector3(0.03, ln + 0.01, 0.012), mid, Vector3(rad_to_deg(atan2(pb.z - pa.z, pb.y - pa.y)), 0, 0))
 	for sx in [-1.0, 1.0]:
-		_b(b, mt["stainless"], Vector3(0.12, 0.03, 0.03), Vector3(sx * 0.16, 1.62, 0.43), Vector3(0, 0, 0))
+		# door handles either side of the seam
+		_b(b, mt["stainless"], Vector3(0.12, 0.03, 0.03), Vector3(sx * 0.18, 1.72, 0.4), Vector3(0, sx * 25.0, 0))
 	# Kylchap double chimney: two openings in line on top
 	for cz in [2.55, 3.05]:
 		_c(b, black, 0.22, 0.05, Vector3(0, 3.86, cz), Vector3.ZERO, 16)
