@@ -1,6 +1,6 @@
 extends SceneTree
 ## Flexible screenshot tool for graphics work.
-## usage: -s res://tests/shot.gd -- <a4|mariyung> <cold|prep|ready> <day|dusk|night> <clear|rain> <quality 0-3> <prefix> <shots>
+## usage: -s res://tests/shot.gd -- <a4|mariyung|c92> <cold|prep|ready> <day|dusk|night> <clear|rain> <quality 0-3> <prefix> <shots>
 ## shots: comma list of  cab:<view>:<yaw>:<pitch>  |  ext:<yaw>:<pitch>:<dist>  |  line  |
 ##        free:<s>:<lateral>:<height>:<yaw deg>:<pitch deg>  |  freeg:(same, height above the ground)  |
 ##        move:<metres>:<speed>  |
@@ -17,7 +17,7 @@ var settle := 5
 func _initialize() -> void:
 	var a := OS.get_cmdline_user_args()
 	var gs = root.get_node("GameSettings")
-	gs.train = 1 if a[0] == "a4" else 0
+	gs.train = {"mariyung": 0, "a4": 1, "c92": 2}[a[0]]
 	gs.start_state = {"cold": 0, "prep": 1, "ready": 2}[a[1]]
 	gs.time_of_day = a[2]
 	gs.weather = a[3]

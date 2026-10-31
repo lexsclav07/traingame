@@ -6,7 +6,7 @@ extends SceneTree
 ## untouched run. Controls that only work in certain situations (e.g. DATA only
 ## in ETCS standby, EB reset only after an emergency brake) get that situation
 ## set up first, in both the untouched and the operated run.
-## usage: -s res://tests/control_effects.gd -- <a4|mariyung> [start 0-2] [id ...]
+## usage: -s res://tests/control_effects.gd -- <a4|mariyung|c92> [start 0-2] [id or prefix* ...]
 ## Exit code 1 if any control changes nothing.
 
 var train_name := "mariyung"
@@ -38,7 +38,9 @@ func _initialize() -> void:
 
 func _new_game() -> void:
 	var gs = root.get_node("GameSettings")
-	gs.train = 1 if train_name == "a4" else 0
+	gs.train = {"mariyung": 0, "a4": 1, "c92": 2}[train_name]
+	gs.coal_wagons = 6
+	gs.coal_loaded = true
 	gs.start_state = start
 	gs.graphics_quality = 0
 	gs.time_of_day = "day"
@@ -60,7 +62,7 @@ func _process(_d: float) -> bool:
 	var cab = game.cab
 	if ids.is_empty():
 		for id in cab.controls:
-			if only.is_empty() or only.has(id):
+			if only.is_empty() or only.has(id) or only.any(func(o): return o.ends_with("*") and id.begins_with(o.trim_suffix("*"))):
 				ids.append(id)
 		ids.sort()
 		for id in ids:
@@ -133,6 +135,11 @@ const SETUPS := {
 	"mariyung": ["dmi_data", "dmi_start", "dmi_ack", "doors_close", "dsd", "eb_reset", "mcb_comp", "mcb_doors",
 		"mcb_wipers", "pan_up", "park_release", "tms_status", "vigilance"],
 	"a4": ["cocks", "fire_zone_0", "fire_zone_1", "fire_zone_2", "fire_zone_3", "firelighters", "scoop"],
+	"c92": ["l_bail_off", "l_alerter", "l_reverser", "l_ditch", "l_sw_engine_run", "l_sw_gen_field", "l_scr_engine",
+		"l_cb_tcc1", "l_cb_tcc2", "l_cb_comp", "l_cb_alerter", "l_fuel_prime", "l_engine_start", "l_dead_engine",
+		"t_auto_brake", "t_ind_brake", "t_bail_off", "t_horn", "t_sand", "t_alerter", "t_throttle", "t_dynbrake", "t_reverser",
+		"t_ditch", "t_sw_engine_run", "t_sw_gen_field", "t_scr_engine", "t_cb_tcc1", "t_cb_tcc2", "t_cb_comp", "t_cb_lights",
+		"t_cb_alerter", "t_fuel_prime", "t_engine_start", "t_dead_engine"],
 }
 
 
@@ -144,10 +151,30 @@ func _setc(id: String, v: float) -> void:
 	game.cab.c(id).set_value(v)
 
 
+## The second unit's cab takes over: the first unit's cab is shut down and
+## set to trail, and the second unit's brake valve, reverser and switches set
+## up to drive.
+func _cab2_drives() -> void:
+	_setc("l_sw_control", 0)
+	_setc("l_brake_mode", 1)
+	_setc("l_reverser", 1)
+	_setc("t_brake_mode", 0)
+	_setc("t_reverser", 2)
+	_setc("t_auto_brake", 0.0)
+	_setc("t_ind_brake", 1.0)
+	_setc("t_headlights", 2)
+	for sw in ["t_sw_control", "t_sw_engine_run", "t_sw_gen_field"]:
+		_setc(sw, 1)
+	_run(10)
+
+
 ## Put the train in the situation where 'id' should do something (applied to
 ## both the untouched and the operated run).
 func _setup(id: String) -> void:
 	var sim = game.sim
+	if train_name == "c92":
+		_setup_c92(id)
+		return
 	match id:
 		"dmi_data":
 			sim.etcs_mode = "SB"
@@ -200,6 +227,64 @@ func _setup(id: String) -> void:
 				sim.zone_t[i] = 20.0
 		"scoop":
 			pass
+
+
+func _setup_c92(id: String) -> void:
+	if not _has_setup(id):
+		return
+	var sim = game.sim
+	var u := 0 if id.begins_with("l_") else 1
+	var p := id.substr(0, 2)
+	var short := id.substr(2)
+	if p == "t_" and short in ["auto_brake", "ind_brake", "bail_off", "horn", "sand", "alerter", "cb_alerter", "throttle", "dynbrake",
+			"reverser", "sw_engine_run", "sw_gen_field"]:
+		_cab2_drives()
+	match short:
+		"bail_off":
+			# a full service, so the locomotives' own brake cylinders fill from it
+			_setc(p + "ind_brake", 0.0)
+			_setc(p + "auto_brake", 5.0)
+			_run(240)
+		"alerter", "cb_alerter":
+			_setc(p + "throttle", 1)
+			_run(2)
+			sim.alerter_t = 58.0
+		"reverser":
+			_setc(p + "throttle", 1)
+			_run(4)
+		"sw_engine_run", "sw_gen_field":
+			_setc(p + "throttle", 3)
+			_run(4)
+		"cb_tcc1", "cb_tcc2":
+			_setc("l_throttle", 3)
+			_run(10)
+		"ditch":
+			if p == "l_":
+				sim.ditch_flash = 15.0
+			else:
+				_setc("t_headlights", 2)
+		"scr_engine":
+			sim.screen_page[u] = 2
+		"cb_comp":
+			sim.mr[u] = 800.0
+			_setc("l_mr_cock", 0)           # keep the other unit's reservoir from topping it up
+			_run(2)
+		"cb_lights":
+			_setc(p + "headlights", 2)
+			_run(2)
+		"fuel_prime":
+			sim.eng[u] = "stopped"
+			sim.rpm[u] = 0.0
+			sim.fuel_p[u] = 0.0
+			_setc(p + "ecs", 0)
+		"engine_start":
+			sim.eng[u] = "stopped"
+			sim.rpm[u] = 0.0
+			sim.fuel_p[u] = 380.0
+			_setc(p + "ecs", 0)
+		"dead_engine":
+			sim.mr[u] = 300.0
+			_setc("l_mr_cock", 0)
 
 
 ## Things to do after operating (or not operating) the control, in both runs.
@@ -256,6 +341,8 @@ func _run(n: int) -> void:
 		game.cab.call("update_visuals", game.sim, 0.05)
 		if game.effects:
 			game.effects.update(game.sim, 0.05)
+		if game.diesel:
+			game.diesel.update(game.sim, 0.05)
 
 
 func _same(a, b) -> bool:
@@ -296,7 +383,8 @@ func _snap() -> Dictionary:
 		for i in range(g.targets.size()):
 			out["gauge.%s[%d]" % [id, i]] = g.targets[i]
 	var li := 0
-	for l in cab.find_children("*", "Light3D", true, false):
+	# every light on the train: cab, engine room, walkways, head and ditch lights
+	for l in game.train.find_children("*", "Light3D", true, false):
 		out["light[%d]" % li] = (l as Light3D).light_energy
 		li += 1
 	# moving parts, materials and shader state held by the cab script
@@ -332,8 +420,21 @@ func _snap() -> Dictionary:
 			out["veh%d.head_light[%d]" % [vi, i]] = (veh.head_lights[i] as Light3D).light_energy
 		if veh.scoop:
 			out["veh%d.scoop" % vi] = str(veh.scoop.transform)
+		for k in veh.extra:
+			var e = veh.extra[k]
+			var items: Array = e if e is Array else [e]
+			for i in range(items.size()):
+				if items[i] is Light3D:
+					continue
+				if items[i] is Node3D:
+					out["veh%d.%s[%d]" % [vi, k, i]] = str((items[i] as Node3D).transform)
+				elif items[i] is StandardMaterial3D:
+					out["veh%d.%s[%d]" % [vi, k, i]] = (items[i] as StandardMaterial3D).emission_energy_multiplier
 	var win := MU.mat(Color(0.06, 0.08, 0.1), 0.08, 0.5, "nif_win")
 	out["saloon_windows"] = win.emission_energy_multiplier
+	if game.diesel:
+		for i in range(game.diesel.stacks.size()):
+			out["dfx[%d]" % i] = (game.diesel.stacks[i] as GPUParticles3D).amount_ratio
 	if game.effects:
 		var fx = game.effects
 		for n in ["chimney", "safety", "whistle", "scoop_spray"]:

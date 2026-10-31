@@ -24,6 +24,7 @@ var picking := true       # hover-highlight controls under the mouse (off for sc
 var dragging: CabControl
 var drag_button := 0
 var highlight: MeshInstance3D
+var torch: SpotLight3D      # carried when standing outside at night
 var _mouse_moved := false
 
 
@@ -50,6 +51,14 @@ func setup(c: Cab, t: Train) -> void:
 	highlight.material_override = hm
 	highlight.visible = false
 	add_child(highlight)
+	torch = SpotLight3D.new()
+	torch.light_color = Color(1.0, 0.96, 0.88)
+	torch.spot_range = 14.0
+	torch.spot_angle = 24.0
+	torch.light_energy = 0.0
+	torch.shadow_enabled = false
+	cam.add_child(torch)
+	torch.position = Vector3(0.15, -0.2, 0)
 	set_view(0)
 
 
@@ -59,6 +68,19 @@ func set_view(i: int) -> void:
 	yaw = 0.0
 	pitch = 0.0
 	cam.fov = fov_cab
+
+
+func set_view_named(nm: String) -> void:
+	var i := cab.view_order.find(nm)
+	if i >= 0:
+		set_view(i)
+
+
+func prev_cab_view() -> void:
+	if mode != "cab":
+		set_view(0)
+	else:
+		set_view((view_idx - 1 + cab.view_order.size()) % cab.view_order.size())
 
 
 func view_name() -> String:
@@ -102,9 +124,11 @@ func _release_drag() -> void:
 func update_camera(delta: float) -> void:
 	match mode:
 		"cab":
-			var vp: Transform3D = cab.view_points[cab.view_order[view_idx]]
+			var vname: String = cab.view_order[view_idx]
+			var vp: Transform3D = cab.view_points[vname]
 			var head := Basis.from_euler(Vector3(pitch, yaw, 0))
-			var t := cab.global_transform * Transform3D(vp.basis * head, vp.origin)
+			var anchor: Node3D = cab.view_anchor.get(vname, cab)
+			var t := anchor.global_transform * Transform3D(vp.basis * head, vp.origin)
 			# a little ride motion: track irregularities at speed
 			var spd := absf(train.speed)
 			var tt := Time.get_ticks_msec() * 0.001
@@ -129,6 +153,8 @@ func update_camera(delta: float) -> void:
 			cam.global_transform = Transform3D(Basis(), pos).looking_at(target, Vector3.UP)
 	if mode == "cab" and picking:
 		_pick()
+	var dark: bool = mode == "cab" and cab.needs_torch(cab.view_order[view_idx])
+	torch.light_energy = 2.2 if dark and GameSettings.time_of_day != "day" else 0.0
 	if dragging:
 		_place_highlight(dragging)
 
@@ -140,7 +166,7 @@ func _pick() -> void:
 	var o := cam.project_ray_origin(mp)
 	var d := cam.project_ray_normal(mp)
 	var best: CabControl = null
-	var bd := 3.0
+	var bd := minf(3.0, cab.block_distance(o, d))
 	for id in cab.controls:
 		var ctl: CabControl = cab.controls[id]
 		if not ctl.enabled and ctl.id.begins_with("fire_zone"):

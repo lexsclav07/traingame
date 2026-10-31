@@ -71,6 +71,15 @@ func resistance(v_abs: float) -> float:
 					aero += 4.0
 			"coach":
 				r += mt * (10.0 + 0.045 * vk + 0.0012 * vk * vk)
+			"c44":
+				# heavy diesel: bearings, traction motor gears, flange friction
+				r += mt * (6.5 + 0.035 * vk)
+				aero += 6.5 if first else 1.6
+			"coal":
+				# loaded hoppers on roller bearings; empties ride on fewer tonnes but
+				# have the same open-top drag
+				r += mt * (5.5 + 0.03 * vk) + 120.0
+				aero += 1.3
 			_:
 				r += mt * (8.0 + 0.035 * vk)
 				aero += 3.5 if first else 0.9

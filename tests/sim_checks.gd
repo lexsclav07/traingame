@@ -22,6 +22,8 @@ func run_tests(which: String) -> void:
 	add_child(world)
 	if which == "a4":
 		_a4_tests()
+	elif which == "c92":
+		_c92_tests()
 	else:
 		_emu_tests()
 
@@ -257,3 +259,194 @@ func _emu_tests() -> void:
 		return train.derailed)
 	check(not train.derailed and S["first"] != "", "ETCS intervenes before a curve overspeed derails the train")
 	print("5. Holding full power for 400 s: %s; derailed=%s; max lateral %.2f m/s2; max over line speed %.1f km/h; EB latched %s" % [S["first"], str(train.derailed), S["maxlat"], S["maxover"], str(ms.eb_latched)])
+
+
+# ============================================================ 92 class pair
+func _make_c92(start: int, wagons: int, loaded: bool, s0: float) -> void:
+	if train:
+		train.queue_free()
+		sim.queue_free()
+	GameSettings.coal_loaded = loaded
+	GameSettings.coal_wagons = wagons
+	track = Track.new()
+	track.build(RouteDefs.get_route("nsw"))
+	train = Train.new()
+	world.add_child(train)
+	train.setup(track, s0)
+	var lead := CoalModels.c44aci("9206")
+	var trail := CoalModels.c44aci("9211")
+	train.add_vehicle(lead)
+	train.add_vehicle(trail)
+	for i in range(wagons):
+		train.add_vehicle(CoalModels.coal_wagon(loaded, i + 1, i == wagons - 1))
+	cab = C92Cab.new()
+	(cab as C92Cab).build_both(lead, trail)
+	var cs := C92Sim.new()
+	world.add_child(cs)
+	cs.setup(train, cab, start)
+	cs.message.connect(func(m, k): print("      [%s] %s" % [k, m]))
+	sim = cs
+	train.sim = cs
+	t = 0.0
+
+
+## Front-of-train position at the end of a stretch of track at least 'need' m
+## long whose grade lies between gmin and gmax.
+func _find_section(gmin: float, gmax: float, need: float) -> float:
+	var tr := Track.new()
+	tr.build(RouteDefs.get_route("nsw"))
+	var s := 0.0
+	var run_len := 0.0
+	while s < tr.length:
+		var g := tr.grade_at(s)
+		if g >= gmin and g <= gmax:
+			run_len += 10.0
+			if run_len >= need:
+				return s
+		else:
+			run_len = 0.0
+		s += 10.0
+	return 1000.0
+
+
+func hold_button(id: String, secs: float, until := Callable()) -> void:
+	var c := cab.c(id)
+	c.press(MOUSE_BUTTON_LEFT)
+	run(secs, 0.05, until)
+	c.release()
+
+
+func kmh() -> float:
+	return absf(train.speed) * 3.6
+
+
+func _c92_tests() -> void:
+	# the start of the loop: level both sides of s = 0 (the train's rear wraps round)
+	var level_s := 150.0
+	# 1. a full cold start of both units, done through the controls
+	_make_c92(GameSettings.StartState.COLD, 20, true, level_s)
+	var cs := sim as C92Sim
+	print("1. Cold start: two 92 class and 20 loaded wagons (%.0f t, %.0f m)" % [train.total_mass() / 1000.0, train.total_length()])
+	for p in C92Sim.PFX:
+		cab.c(p + "bat_door").set_value(1)
+		cab.c(p + "bat2_door").set_value(1)
+		cab.c(p + "bat_switch").set_value(1)
+		cab.c(p + "ecp_door").set_value(1)
+		for b in C92Sim.BREAKERS:
+			cab.c(p + b).set_value(1)
+	run(40.0, 0.05, func(): return cs.computer[0] and cs.computer[1])
+	print("   computers ready after %.0f s" % t)
+	for u in range(2):
+		var p: String = C92Sim.PFX[u]
+		hold_button(p + "fuel_prime", 15.0, func(): return cs.fuel_p[u] > 250.0)
+		hold_button(p + "engine_start", 16.0, func(): return cs.eng[u] == "running")
+		print("   unit %d: %s after %d start attempt(s), t = %.0f s" % [u + 1, cs.eng[u], cs.start_attempts[u], t])
+	check(cs.is_running(0) and cs.is_running(1), "both engines start: battery, breakers, computer, fuel prime, engine start")
+	# second unit set up to trail, the units coupled up, the front unit leading
+	cab.c("t_brake_door").set_value(1)
+	cab.c("t_brake_mode").set_value(1)
+	cab.c("t_ecs").set_value(1)
+	for ck in ["l_bp_cock", "t_bp_cock", "l_mr_cock", "t_mr_cock", "mu_jumper"]:
+		cab.c(ck).set_value(1)
+	cab.c("l_ecs").set_value(1)
+	var t_air := t
+	run(1200.0, 0.1, func(): return cs.mr[0] > 860.0 and cs.mr[1] > 860.0)
+	print("   main reservoirs above 860 kPa after %.0f s at idle" % (t - t_air))
+	check(cs.mr[0] > 860.0 and t - t_air < 900.0, "compressors charge both main reservoirs at idle in under 15 minutes")
+	cab.c("l_auto_brake").set_value(0.0)
+	var t_bp := t
+	run(1200.0, 0.1, func(): return cs.bp[cs.n - 1] > 470.0)
+	print("   brake pipe charged to the last wagon (%d kPa) %.0f s after release" % [int(cs.bp[cs.n - 1]), t - t_bp])
+	check(cs.bp[cs.n - 1] > 470.0, "brake pipe charges to the rear of the train")
+	cab.c("l_handbrake").set_value(0.0)
+	cab.c("t_handbrake").set_value(0.0)
+	for s2 in ["sw_control", "sw_engine_run", "sw_gen_field"]:
+		cab.c("l_" + s2).set_value(1)
+	# wait for the whole train to charge (the flow falls away) before the test
+	var t_full := t
+	run(900.0, 0.1, func(): return cs.bp[cs.n - 1] > 490.0 and absf(cs.flow[0]) < 400.0)
+	print("   train fully charged %.0f s later (rear %d kPa, flow %d L/min)" % [t - t_full, int(cs.bp[cs.n - 1]), int(cs.flow[0])])
+	cab.c("l_auto_brake").set_value(1.0)
+	var t_bt := t
+	run(120.0, 0.05, func(): return cs.brake_test == 1)
+	print("   brake test: a minimum reduction reached the rear wagon %.1f s after the handle moved" % (t - t_bt))
+	cab.c("l_auto_brake").set_value(0.0)
+	var t_rel := t
+	run(400.0, 0.1, func(): return cs.brake_test == 2)
+	print("   ... and released at the rear %.0f s after release" % (t - t_rel))
+	cab.c("l_headlights").set_value(2)
+	cab.c("l_markers").set_value(1)
+	run(1.0)
+	var cl: Array = cs.checklist()
+	print("   checklist: %s" % str(cl.map(func(x): return 1 if x[1] else 0)))
+	var all_ok := true
+	for i in range(cl.size() - 1):
+		all_ok = all_ok and bool(cl[i][1])
+	check(all_ok, "the whole start-up checklist completes (all but moving off)")
+	# 2. pulling away on the level: the second unit loads through the MU jumper
+	cab.c("l_reverser").set_value(2)
+	cab.c("l_throttle").set_value(8)
+	run(6.0)
+	cab.c("l_ind_brake").set_value(0.0)
+	run(6.0)
+	var adh := 0.33 * 139000.0 * 9.81
+	print("2. starting: TE %d + %d kN (adhesion %d kN per unit), rpm %d / %d, grade %.4f" % [int(cs.te[0] / 1000.0), int(cs.te[1] / 1000.0), int(adh / 1000.0), int(cs.rpm[0]), int(cs.rpm[1]), track.grade_at(train.front_s)])
+	check(cs.te[1] > 0.8 * cs.te[0] and cs.te[0] > 0.8 * adh, "both units load to the adhesion limit when starting")
+	var marks := [10.0, 20.0, 30.0, 40.0, 60.0]
+	S = {"mi": 0, "t0": t, "d0": train.odometer}
+	run(400.0, 0.05, func():
+		cs.alerter_t = 0.0
+		var mi: int = S["mi"]
+		if mi < marks.size() and kmh() >= marks[mi]:
+			print("   %2d km/h after %5.1f s, %4.0f m  (TE %d kN, grade %.4f)" % [int(marks[mi]), t - S["t0"], train.odometer - S["d0"], int((cs.te[0] + cs.te[1]) / 1000.0), track.grade_at(train.front_s)])
+			S["mi"] = mi + 1
+		return S["mi"] >= marks.size())
+	check(kmh() >= 59.0, "the 2,680 t train reaches 60 km/h on the level")
+	# 3. stowing the MU jumper: the second unit stops loading
+	cab.c("mu_jumper").set_value(0)
+	run(4.0, 0.05, func():
+		cs.alerter_t = 0.0
+		return false)
+	print("3. MU jumper stowed: unit 2 TE %d kN (%s), unit 1 TE %d kN" % [int(cs.te[1] / 1000.0), cs.why_not[1], int(cs.te[0] / 1000.0)])
+	check(cs.te[1] < 1000.0 and cs.te[0] > 50000.0, "the second unit drops its load when the MU jumper is stowed")
+	cab.c("mu_jumper").set_value(1)
+	# 4. dynamic brake at speed
+	cab.c("l_throttle").set_value(0)
+	run(2.0)
+	cab.c("l_dynbrake").set_value(9.0)
+	run(12.0, 0.05, func():
+		cs.alerter_t = 0.0
+		return false)
+	print("4. dynamic brake at %d km/h: %d + %d kN, blowers %.2f" % [int(kmh()), int(cs.db[0] / 1000.0), int(cs.db[1] / 1000.0), cs.db_blower[0]])
+	check(cs.db[0] > 150000.0 and cs.db[1] > 150000.0, "both units' dynamic brakes take effect")
+	cab.c("l_dynbrake").set_value(0.0)
+	# 5. full service: the application travels down the train, then the stop
+	run(3.0)
+	var v0 := kmh()
+	var d0 := train.odometer
+	var t0 := t
+	S = {"rear": -1.0}
+	cab.c("l_auto_brake").set_value(5.0)
+	run(300.0, 0.05, func():
+		cs.alerter_t = 0.0
+		if S["rear"] < 0.0 and cs.bc[cs.n - 1] > 40.0:
+			S["rear"] = t - t0
+		return absf(train.speed) < 0.01)
+	print("5. full service from %d km/h: rear wagon braking after %.1f s; stopped in %.0f m, %.0f s (wagon BC %d kPa)" % [int(v0), S["rear"], train.odometer - d0, t - t0, int(cs.bc[cs.n - 1])])
+	check(S["rear"] > 1.0 and S["rear"] < 15.0 and absf(train.speed) < 0.01, "the brakes reach the rear in seconds, not instantly, and stop the train")
+	# 6. the 1 in 40 bank with 20 loaded wagons: start on it and climb
+	var bank_s := _find_section(0.022, 0.03, 600.0)
+	_make_c92(GameSettings.StartState.READY, 20, true, bank_s)
+	cs = sim as C92Sim
+	cab.c("l_throttle").set_value(8)
+	cab.c("l_sand").press(MOUSE_BUTTON_LEFT)
+	run(6.0)
+	cab.c("l_ind_brake").set_value(0.0)
+	S = {"min": 0.0}
+	run(240.0, 0.05, func():
+		cs.alerter_t = 0.0
+		S["min"] = minf(S["min"], train.speed)
+		return false)
+	cab.c("l_sand").release()
+	print("6. 1 in 40 bank, 20 loaded wagons (%.0f t): %d km/h after 4 min, rolled back %.2f m/s at worst, TE %d kN, slipping %s" % [train.total_mass() / 1000.0, int(kmh()), -S["min"], int((cs.te[0] + cs.te[1]) / 1000.0), str(cs.slip)])
+	check(kmh() > 15.0 and S["min"] > -0.5, "two units lift 20 loaded wagons up the 1 in 40")

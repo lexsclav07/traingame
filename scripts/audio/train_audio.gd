@@ -3,11 +3,25 @@ extends Node
 ## Real-time synthesised sound (no audio files needed). Reads sim.sound values.
 
 const RATE := 22050.0
+const HORN_K5 := [311.1, 370.0, 415.3, 493.9, 622.3]
 
 var player: AudioStreamPlayer
 var pb: AudioStreamGeneratorPlayback
 var sim: TrainSim
 var steam := false
+var diesel := false
+var near_unit := 0             # diesel: the locomotive the listener is in or next to
+var _dp := PackedFloat64Array()   # diesel oscillator phases
+var _dl := PackedFloat64Array()   # diesel filter states
+var _rpm := PackedFloat64Array([0.0, 0.0])
+var _load := PackedFloat64Array([0.0, 0.0])
+var _turbo := PackedFloat64Array([0.0, 0.0])
+var _crank := PackedFloat64Array([0.0, 0.0])
+var _comp := PackedFloat64Array([0.0, 0.0])
+var _dbb := PackedFloat64Array([0.0, 0.0])
+var _fan := PackedFloat64Array([0.0, 0.0])
+var _ac := PackedFloat64Array([0.0, 0.0])
+var _gain := PackedFloat64Array([1.0, 0.4])
 var vol := 0.8
 var _ph := {}                 # oscillator phases
 var _lp := {}                 # filter states
@@ -22,9 +36,13 @@ var in_cab := true
 var xing_bell := 0.0          # level crossing bells (set by the game from the camera's distance)
 
 
-func setup(s: TrainSim, is_steam: bool) -> void:
+## mode: "electric", "steam" or "diesel"
+func setup(s: TrainSim, mode: String) -> void:
 	sim = s
-	steam = is_steam
+	steam = mode == "steam"
+	diesel = mode == "diesel"
+	_dp.resize(64)
+	_dl.resize(64)
 	vol = GameSettings.master_volume
 	var gen := AudioStreamGenerator.new()
 	gen.mix_rate = RATE
@@ -92,6 +110,25 @@ func update_audio(delta: float, _time_scale: float, cab_view: bool) -> void:
 		_smooth("scoop", clampf(float(s.get("scoop", 0.0)) / 300.0, 0.0, 1.0), 3.0, delta)
 		_smooth("gauge_blow", float(s.get("gauge_blow", 0.0)), 20.0, delta)
 		_smooth("overflow", float(s.get("overflow", 0.0)), 4.0, delta)
+	elif diesel:
+		for u in range(2):
+			_rpm[u] = _smooth("rpm%d" % u, float(s.get("rpm%d" % u, 0.0)), 4.0, delta)
+			_load[u] = _smooth("load%d" % u, float(s.get("load%d" % u, 0.0)), 2.5, delta)
+			_turbo[u] = _smooth("turbo%d" % u, float(s.get("turbo%d" % u, 0.0)), 3.0, delta)
+			_crank[u] = _smooth("crank%d" % u, float(s.get("crank%d" % u, 0.0)), 12.0, delta)
+			_comp[u] = _smooth("comp%d" % u, float(s.get("comp%d" % u, 0.0)), 3.0, delta)
+			_dbb[u] = _smooth("db%d" % u, float(s.get("db%d" % u, 0.0)), 1.5, delta)
+			_fan[u] = _smooth("fan%d" % u, float(s.get("fan%d" % u, 0.0)), 1.0, delta)
+			_ac[u] = _smooth("cabac%d" % u, float(s.get("cabac%d" % u, 0.0)), 1.0, delta)
+			# the engine you are next to is loud, the other one 22 m away
+			var near := u == near_unit
+			_gain[u] = (0.8 if near else 0.3) if cab_view else (1.0 if near else 0.55)
+		_smooth("horn", float(s.get("horn", 0.0)), 25.0, delta)
+		_smooth("alerter", float(s.get("alerter", 0.0)), 30.0, delta)
+		_smooth("inverter", float(s.get("inverter", 0.0)), 4.0, delta)
+		_smooth("release", float(s.get("release", 0.0)), 6.0, delta)
+		_smooth("sand", float(s.get("sand", 0.0)), 8.0, delta)
+		_smooth("bc", float(s.get("bc", 0.0)), 3.0, delta)
 	else:
 		_smooth("traction", float(s.get("traction", 0.0)), 6.0, delta)
 		_smooth("regen", float(s.get("regen", 0.0)), 6.0, delta)
@@ -145,6 +182,8 @@ func update_audio(delta: float, _time_scale: float, cab_view: bool) -> void:
 			_env["click"] = ce * 0.9985
 		if steam:
 			out += _steam_sample(n, v, dt)
+		elif diesel:
+			out += _diesel_sample(n, vk)
 		else:
 			out += _electric_sample(n, v, vk)
 		# level crossing bell: struck twice a second, inharmonic partials
@@ -214,6 +253,89 @@ func _steam_sample(n: float, v: float, dt: float) -> float:
 		w += _osc("w1h", 586.0) * 0.12 + _osc("w2h", 698.0) * 0.1
 		w += _lowpass("w_n", n, 0.3) * 0.25
 		out += w * wh * 0.55
+	return out
+
+
+## Advance a diesel oscillator; returns its phase 0..1.
+func _dph(i: int, f: float) -> float:
+	var ph := _dp[i] + f / RATE
+	ph -= floorf(ph)
+	_dp[i] = ph
+	return ph
+
+
+func _dlp(i: int, x: float, a: float) -> float:
+	var y := _dl[i] + a * (x - _dl[i])
+	_dl[i] = y
+	return y
+
+
+## One GE 7FDL-16: firing pulses at 8 per revolution, uneven from cylinder to
+## cylinder (the four-stroke "lope"), muffled at idle and harsh under load,
+## with the turbocharger's whine on top; plus the engine-driven compressor,
+## dynamic brake grid blowers and radiator fans of that unit.
+func _engine_unit(u: int, n: float) -> float:
+	var r := _rpm[u]
+	var b := u * 20
+	var out := 0.0
+	if r > 15.0:
+		var f := r / 60.0 * 8.0
+		var phf := _dph(b, f)
+		var phc := _dph(b + 1, r / 120.0)
+		var ld := _load[u]
+		var uneven := 1.0 + 0.22 * sin(phc * TAU) + 0.12 * sin(phc * TAU * 3.0 + 1.3)
+		var pulse := exp(-phf * (5.0 + ld * 3.0)) * uneven
+		var body := sin(phf * TAU) * 0.5 + sin(_dph(b + 2, f * 0.5) * TAU) * 0.35
+		var grit := _dlp(b + 3, n, 0.08 + ld * 0.12)
+		var x := pulse * (0.55 + grit * 0.9) + body * 0.4
+		x = _dlp(b + 4, x, 0.1 + ld * 0.25 + r / 1050.0 * 0.12)
+		out += x * clampf(r / 440.0, 0.0, 1.0) * (0.4 + ld * 0.6) * 1.3
+		var tb := _turbo[u]
+		out += sin(_dph(b + 5, 1600.0 + tb * 4200.0 + r * 0.8) * TAU) * (0.004 + tb * 0.03)
+		out += (n - _dlp(b + 6, n, 0.35)) * tb * 0.1
+	var cr := _crank[u]
+	if cr > 0.01:
+		# cranking: the main alternator, run as a motor, whines as it turns the engine over
+		out += sin(_dph(b + 7, 300.0 + r * 1.6) * TAU) * 0.06 * cr + sin(_dph(b + 8, 900.0 + r * 4.8) * TAU) * 0.015 * cr
+	var cm := _comp[u]
+	if cm > 0.01:
+		var pc := _dph(b + 9, r / 60.0 * 3.0)
+		out += exp(-pc * 7.0) * _dlp(b + 10, n, 0.12) * cm * 0.9
+	var db := _dbb[u]
+	if db > 0.01:
+		out += (_dlp(b + 11, n, 0.3) - _dlp(b + 12, n, 0.03)) * db * 0.45 + sin(_dph(b + 13, 140.0 + db * 160.0) * TAU) * db * 0.02
+	var fn := _fan[u]
+	if fn > 0.01:
+		out += _dlp(b + 14, n, 0.05) * fn * 0.5
+	if _ac[u] > 0.01 and u == near_unit and in_cab:
+		out += (_dlp(b + 15, n, 0.1) - _dlp(b + 16, n, 0.02)) * _ac[u] * 0.12
+	return out * _gain[u]
+
+
+func _diesel_sample(n: float, vk: float) -> float:
+	var out := _engine_unit(0, n) + _engine_unit(1, n)
+	# AC traction: inverters and motors whine with speed while loading or braking
+	var inv: float = p.get("inverter", 0.0)
+	if inv > 0.01:
+		out += (sin(_dph(45, 220.0 + vk * 21.0) * TAU) * 0.035 + sin(_dph(46, 1150.0 + vk * 2.0) * TAU) * 0.01) * inv
+	# Nathan K5LA five-chime horn (a B6 chord, rich and reedy)
+	var hn: float = p.get("horn", 0.0)
+	if hn > 0.01:
+		var hsum := 0.0
+		for k in range(5):
+			hsum += 1.0 if _dph(40 + k, HORN_K5[k]) < 0.5 else -1.0
+		out += _dlp(47, hsum, 0.35) * hn * 0.075
+	if p.get("alerter", 0.0) > 0.01:
+		out += sin(_dph(48, 1950.0) * TAU) * 0.07 * (1.0 if fmod(_t, 0.6) < 0.3 else 0.0)
+	var rl: float = p.get("release", 0.0)
+	if rl > 0.01:
+		out += (n - _dlp(49, n, 0.4)) * rl * 0.35
+	var sd: float = p.get("sand", 0.0)
+	if sd > 0.01:
+		out += (n - _dlp(50, n, 0.2)) * sd * 0.06
+	var bcp: float = p.get("bc", 0.0)
+	if bcp > 80.0 and vk > 0.5 and vk < 12.0:
+		out += sin(_dph(51, 2300.0 + sin(_t * 31.0) * 70.0) * TAU) * 0.025 * clampf((12.0 - vk) / 8.0, 0.0, 1.0)
 	return out
 
 

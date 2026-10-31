@@ -14,6 +14,7 @@ var sim: TrainSim
 var rig: CameraRig
 var hud: Hud
 var effects: Effects
+var diesel: DieselEffects
 var audio: TrainAudio
 var crossings: LevelCrossings
 var built := false
@@ -58,9 +59,16 @@ func _build() -> void:
 	train.name = "Train"
 	add_child(train)
 	var plat: Array = track.route["platforms"][0]
-	train.setup(track, plat[0] + plat[1] - 6.0)
+	if gs.train == GameSettings.TrainType.C92:
+		# a coal train does not stop at the platform: it waits at the signal
+		# before the bridge on the station approach
+		train.setup(track, plat[0] - 80.0)
+	else:
+		train.setup(track, plat[0] + plat[1] - 6.0)
 	if gs.train == GameSettings.TrainType.A4:
 		_build_a4()
+	elif gs.train == GameSettings.TrainType.C92:
+		_build_c92()
 	else:
 		_build_mariyung()
 	train.update_visuals()
@@ -87,15 +95,15 @@ func _build() -> void:
 	grass.setup(terrain, rig.cam, q)
 	audio = TrainAudio.new()
 	add_child(audio)
-	audio.setup(sim, gs.train == GameSettings.TrainType.A4)
+	audio.setup(sim, ["electric", "steam", "diesel"][gs.train])
 	hud.set_help(_help_text())
 	hud.loading.visible = false
 	clock = {"day": 10.5, "dusk": 18.3, "night": 22.0}.get(gs.time_of_day, 10.5) * 3600.0
 	built = true
 	var start_names := ["cold and dark", "prepared, awaiting the crew", "ready to drive"]
+	var train_names := ["Mariyung", "Mallard", "92 class coal train (%d %s wagons)" % [gs.coal_wagons, "loaded" if gs.coal_loaded else "empty"]]
 	_on_message("%s at %s, %s. F1 = controls and help, F2 = start-up checklist." % [
-		"Mariyung" if gs.train == GameSettings.TrainType.MARIYUNG else "Mallard", track.route["name"].split(" (")[0],
-		start_names[gs.start_state]], "good")
+		train_names[gs.train], track.route["name"].split(" (")[0], start_names[gs.start_state]], "good")
 
 
 func _build_mariyung() -> void:
@@ -160,6 +168,30 @@ func _build_a4() -> void:
 	cw.emission_energy_multiplier = 0.8 if gs.time_of_day != "day" else 0.0
 
 
+func _build_c92() -> void:
+	var gs := GameSettings
+	var lead := CoalModels.c44aci("9206")
+	var trail := CoalModels.c44aci("9211")
+	train.add_vehicle(lead)
+	train.add_vehicle(trail)
+	var n: int = gs.coal_wagons
+	for i in range(n):
+		train.add_vehicle(CoalModels.coal_wagon(gs.coal_loaded, i + 1, i == n - 1))
+	train.derail_lat_limit = 2.0
+	var cc := C92Cab.new()
+	cc.build_both(lead, trail)
+	cab = cc
+	var cs := C92Sim.new()
+	add_child(cs)
+	cs.weather = gs.weather
+	cs.setup(train, cc, gs.start_state)
+	sim = cs
+	train.sim = cs
+	diesel = DieselEffects.new()
+	add_child(diesel)
+	diesel.setup([lead, trail])
+
+
 func _on_message(t: String, kind: String) -> void:
 	hud.message(t, kind)
 	if kind == "fail" and sim and sim.failed and sim.fail_reason == t:
@@ -185,9 +217,15 @@ func _process(delta: float) -> void:
 		cab.call("update_visuals", sim, delta)
 	if effects:
 		effects.update(sim as A4Sim, delta)
+	if diesel:
+		diesel.update(sim as C92Sim, delta)
 	rig.update_camera(delta)
 	crossings.update(sim_dt, train, rig.cam.global_position)
 	audio.xing_bell = crossings.bell
+	if diesel:
+		# which locomotive's engine the listener is nearest
+		var anchor = cab.view_anchor.get(rig.view_name(), cab) if rig.mode == "cab" else cab
+		audio.near_unit = 1 if anchor == (cab as C92Cab).cab2 else 0
 	audio.update_audio(delta, ts, rig.mode == "cab")
 	# HUD
 	if rig.mode == "cab" and rig.hovered and not rig.looking:
@@ -196,7 +234,7 @@ func _process(delta: float) -> void:
 		hud.show_tooltip(rig.dragging, "")
 	else:
 		hud.show_tooltip(null, "")
-	var lim := track.limit_at(train.front_s)
+	var lim := minf(track.limit_at(train.front_s), sim.max_speed_kmh())
 	var imperial: bool = track.route["units"] == "imperial"
 	var lim_txt := ("%d mph" % int(round(lim / 1.609344 / 5.0) * 5.0)) if imperial else ("%d km/h" % int(lim))
 	var hh := int(clock / 3600.0) % 24
@@ -216,6 +254,11 @@ func _process(delta: float) -> void:
 
 
 func _key_for(id: String) -> String:
+	if diesel:
+		var short := id.substr(2) if id.begins_with("l_") or id.begins_with("t_") else id
+		var dmap := {"throttle": "D / A", "dynbrake": "A / D", "reverser": "W / S", "auto_brake": "; / '", "ind_brake": "[ / ]",
+			"bail_off": "B (hold)", "horn": "Space", "alerter": "Q", "sand": "X (hold)", "headlights": "L"}
+		return dmap.get(short, "")
 	var map := {"regulator": "A/D", "reverser": "W/S", "brake": "; / '", "whistle": "Space", "large_ejector": "J",
 		"cocks": "C", "sanders": "X", "blower": "B", "firedoor": "R", "inj_live_steam": "I", "inj_exh_steam": "O",
 		"tbc": "A/D", "direction": "W/S", "horn": "Space / N", "vigilance": "Q", "estop": "Backspace",
@@ -237,7 +280,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey) or not event.pressed or event.is_echo():
 		return
 	if event.is_action_pressed("cam_driver"):
-		rig.next_cab_view()
+		if (event as InputEventKey).shift_pressed:
+			rig.prev_cab_view()
+		else:
+			rig.next_cab_view()
+	elif _quick_view(event):
+		pass
 	elif event.is_action_pressed("cam_second"):
 		rig.set_view(1)
 	elif event.is_action_pressed("cam_external"):
@@ -263,6 +311,16 @@ func _unhandled_input(event: InputEvent) -> void:
 				sim.handle_action(action)
 
 
+## Keys 5-9 jump straight to the cab's quick positions (if it has any).
+func _quick_view(event: InputEvent) -> bool:
+	for k in range(5):
+		if event.is_action_pressed("view_%d" % (k + 5)):
+			if k < cab.quick_views.size():
+				rig.set_view_named(cab.quick_views[k])
+			return true
+	return false
+
+
 func _set_pause(on: bool) -> void:
 	paused = on
 	hud.set_pause(on)
@@ -274,7 +332,7 @@ func _help_text() -> String:
 	return sim.help_text() + """
 
 [b]Cameras & general[/b]
-1  cycle cab positions    2  second position    3  outside (drag to orbit, scroll to zoom)    4  lineside
+1  cycle cab positions (Shift+1 back)    2  second position    3  outside (drag to orbit, scroll to zoom)    4  lineside
 Right mouse (hold)  look around    Mouse wheel  adjust the control under the cursor (or zoom)
 + / -  time acceleration (useful while raising steam or charging air)    F2 start-up checklist    F3 details    Esc  pause"""
 

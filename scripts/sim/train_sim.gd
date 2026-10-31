@@ -47,6 +47,11 @@ func help_text() -> String:
 	return ""
 
 
+## Fastest the train itself may run (km/h); the line speed may be lower.
+func max_speed_kmh() -> float:
+	return INF
+
+
 func speed_text() -> String:
 	return "%d km/h" % int(absf(train.speed) * 3.6)
 

@@ -41,10 +41,14 @@ jobs:
       - name: Physics checks (Mariyung)
         run: timeout 600 ./godot --headless --path . -s res://tests/run_sim_test.gd -- mariyung
 
+      - name: Physics checks (92 class pair and coal train)
+        run: timeout 600 ./godot --headless --path . -s res://tests/run_sim_test.gd -- c92
+
       - name: Every cab control can be reached with the mouse
         run: |
           timeout 600 ./godot --headless --path . -s res://tests/pick_test.gd -- mariyung
           timeout 600 ./godot --headless --path . -s res://tests/pick_test.gd -- a4
+          timeout 600 ./godot --headless --path . -s res://tests/pick_test.gd -- c92
 
       - name: Every cab control does something (Mariyung)
         run: timeout 900 ./godot --headless --path . -s res://tests/control_effects.gd -- mariyung 2
@@ -52,10 +56,17 @@ jobs:
       - name: Every cab control does something (A4)
         run: timeout 900 ./godot --headless --path . -s res://tests/control_effects.gd -- a4 2
 
+      - name: Every control does something (92 class, front unit and coupling)
+        run: timeout 900 ./godot --headless --path . -s res://tests/control_effects.gd -- c92 2 "l_*" mu_jumper
+
+      - name: Every control does something (92 class, second unit)
+        run: timeout 900 ./godot --headless --path . -s res://tests/control_effects.gd -- c92 2 "t_*"
+
       - name: Level crossings close in time and reopen
         run: |
           timeout 600 ./godot --headless --path . -s res://tests/crossing_test.gd -- mariyung
           timeout 600 ./godot --headless --path . -s res://tests/crossing_test.gd -- a4
+          timeout 600 ./godot --headless --path . -s res://tests/crossing_test.gd -- c92
 
       - name: Export Linux and Windows builds
         run: |

@@ -2,16 +2,18 @@ extends Node
 ## Autoload "GameSettings": everything chosen in the main menu, plus the
 ## keyboard map. The game scene reads these when it builds the world.
 
-enum TrainType { MARIYUNG, A4 }
+enum TrainType { MARIYUNG, A4, C92 }
 enum StartState { COLD, PREP, READY }
 
-const TRAIN_NAMES := ["NSW D set \"Mariyung\" (EMU)", "LNER A4 4468 \"Mallard\" (steam)"]
+const TRAIN_NAMES := ["NSW D set \"Mariyung\" (EMU)", "LNER A4 4468 \"Mallard\" (steam)", "Pacific National 92 class pair, coal train (diesel)"]
 const START_NAMES := ["Cold & dark (full start-up)", "Prepared (crew prep needed)", "Ready to drive"]
 
 var train: int = TrainType.MARIYUNG
 var mariyung_cars: int = 6          # 4, 6, 8 (4+4) or 10 (6+4)
 var a4_coaches: int = 6             # passenger coaches behind the tender
 var a4_dynamometer: bool = true     # add the LNER dynamometer car (as on 3 July 1938)
+var coal_wagons: int = 20           # coal hoppers behind the two 92 class
+var coal_loaded: bool = true        # loaded (120 t each) or empty (23 t)
 var start_state: int = StartState.READY
 var route: String = "auto"          # auto / nsw / ecml
 var time_of_day: String = "day"     # day / dusk / night
@@ -42,6 +44,14 @@ const KEYS := {
 	"rev_back": [KEY_S],
 	"brake_apply": [KEY_APOSTROPHE],
 	"brake_release": [KEY_SEMICOLON],
+	"ind_apply": [KEY_BRACKETLEFT],      # diesel: independent (locomotive) brake
+	"ind_release": [KEY_BRACKETRIGHT],
+	"bail_off": [KEY_B],                 # diesel: hold to bail off the locomotive brakes
+	"view_5": [KEY_5],                   # quick cab positions
+	"view_6": [KEY_6],
+	"view_7": [KEY_7],
+	"view_8": [KEY_8],
+	"view_9": [KEY_9],
 	"emergency": [KEY_BACKSPACE],
 	"horn": [KEY_SPACE],
 	"horn_low": [KEY_N],
@@ -94,12 +104,12 @@ func key_name(action: String) -> String:
 func route_id() -> String:
 	if route != "auto":
 		return route
-	return "nsw" if train == TrainType.MARIYUNG else "ecml"
+	return "ecml" if train == TrainType.A4 else "nsw"
 
 
 # ---------------------------------------------------------------- persistence
 const SAVE_PATH := "user://settings.cfg"
-const SAVED_KEYS := ["train", "mariyung_cars", "a4_coaches", "a4_dynamometer", "start_state",
+const SAVED_KEYS := ["train", "mariyung_cars", "a4_coaches", "a4_dynamometer", "coal_wagons", "coal_loaded", "start_state",
 	"route", "time_of_day", "weather", "passenger_load", "ai_fireman", "show_tooltips",
 	"graphics_quality", "mouse_sensitivity", "master_volume"]
 

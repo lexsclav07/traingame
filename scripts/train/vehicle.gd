@@ -37,6 +37,7 @@ var cocks_points: Array = []
 var whistle_point: Node3D
 var overflow_points: Array = []           # steam: injector overflow pipes (live, exhaust)
 var scoop: Node3D                         # tender water scoop (moves down when lowered)
+var extra := {}                           # model-specific parts (fans, exhaust, ditch lights...)
 
 
 func total_mass() -> float:

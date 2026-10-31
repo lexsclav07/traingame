@@ -61,15 +61,17 @@ func _ready() -> void:
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 18)
-	grid.add_theme_constant_override("v_separation", 10)
+	grid.add_theme_constant_override("v_separation", 7)
 	hb.add_child(grid)
 
 	_option(grid, "train", "Train", gs.TRAIN_NAMES, gs.train)
 	_option(grid, "mcars", "Mariyung length", ["4 cars", "6 cars", "8 cars (4+4)", "10 cars (6+4)"], [4, 6, 8, 10].find(gs.mariyung_cars))
 	ui["coaches"] = _spin(grid, "Mallard: coaches", 0, 14, gs.a4_coaches)
 	ui["dyn"] = _check(grid, "Mallard: dynamometer car", gs.a4_dynamometer)
+	ui["wagons"] = _spin(grid, "Coal train: wagons", 5, 60, gs.coal_wagons)
+	_option(grid, "coal_load", "Coal train: load", ["Loaded (120 t per wagon)", "Empty (23 t per wagon)"], 0 if gs.coal_loaded else 1)
 	_option(grid, "start", "Start", gs.START_NAMES, gs.start_state)
-	_option(grid, "route", "Route", ["Train's own route", "Hawkesbury Loop (NSW, electrified)", "Stoke Bank Loop (ECML 1930s)"], ["auto", "nsw", "ecml"].find(gs.route))
+	_option(grid, "route", "Route", ["Train's own route", "Hawkesbury Loop (NSW)", "Stoke Bank Loop (ECML 1930s)"], ["auto", "nsw", "ecml"].find(gs.route))
 	_option(grid, "tod", "Time of day", ["Day", "Dusk", "Night"], ["day", "dusk", "night"].find(gs.time_of_day))
 	_option(grid, "weather", "Weather", ["Clear", "Rain (poor adhesion)", "Fog (damp rails)"], ["clear", "rain", "fog"].find(gs.weather))
 	ui["load"] = _slider(grid, "Passenger load", 0.0, 1.0, gs.passenger_load)
@@ -162,6 +164,13 @@ Double-deck intercity electric multiple unit built by Hyundai Rotem with Mitsubi
 [b]As simulated:[/b] 20.4 m cars, 3.03 m wide, 4.40 m tall; 4-car 200 t, 6-car 298 t; 160 km/h design, 130 km/h service; 0.84 m/s² acceleration; 1.01 m/s² service and 1.10 m/s² emergency braking; blended regenerative + EP brakes; spring parking brakes; plug doors with traction interlock; vigilance, driver's safety pedal and ETCS supervision.
 
 Route: the Hawkesbury Loop, a fictional 17.7 km NSW-style electrified line with sandstone cuttings, a 1 in 40 bank and curves down to 300 m radius."""
+	elif t == 2:
+		txt = """[font_size=24][b]Pacific National 92 class pair on a coal train[/b][/font_size]
+Two UGL C44aci locomotives (GE 7FDL-16 engines, AC traction) working in multiple at the head of a Hunter Valley coal train, as Pacific National runs them.
+
+[b]As simulated:[/b] 3,184 kW and 535 kN per unit, 139 t, Co-Co; 13,500 L fuel tanks; 80 km/h with loaded wagons. Each unit has its own battery box (out on the walkway), engine control panel, air brake cabinet, compressor and handbrake: you start both engines, set the second unit up to trail (brake valve cut out, reverser centred, CONTROL off) and drive both from the front cab through the MU jumper. Brake pipe and triple valves on every wagon, so the brakes take time to reach the rear; dynamic brake; alerter and PCS.
+
+The aluminium hoppers weigh 23 t empty and 120 t loaded. On the Hawkesbury Loop's 1 in 40 bank two units can lift about 25 loaded wagons; real Hunter Valley trains of 90+ wagons run on far easier grades."""
 	else:
 		txt = """[font_size=24][b]LNER A4 4468 "Mallard"[/b][/font_size]
 Sir Nigel Gresley's streamlined 4-6-2, holder of the world speed record for steam: 126 mph down Stoke Bank on 3 July 1938 with six coaches and the dynamometer car (240 tons).
@@ -174,7 +183,7 @@ Route: the Stoke Bank Loop, a fictional 43 km 1930s East Coast Main Line-style c
 		"\n\n[b]Prepared:[/b] the train has been stabled with power available / a banked fire. You do the crew preparation, tests and departure.",
 		"\n\n[b]Ready to drive:[/b] prepared, tested and ready to depart."]
 	desc.text = txt + starts[st]
-	var pic := "res://assets/ui/menu_%s.jpg" % ("mariyung" if t == 0 else "a4")
+	var pic := "res://assets/ui/menu_%s.jpg" % ["mariyung", "a4", "c92"][t]
 	bg_tex.texture = load(pic) if ResourceLoader.exists(pic) else null
 
 
@@ -183,6 +192,8 @@ func _start() -> void:
 	gs.mariyung_cars = [4, 6, 8, 10][(ui["mcars"] as OptionButton).selected]
 	gs.a4_coaches = int((ui["coaches"] as SpinBox).value)
 	gs.a4_dynamometer = (ui["dyn"] as CheckBox).button_pressed
+	gs.coal_wagons = int((ui["wagons"] as SpinBox).value)
+	gs.coal_loaded = (ui["coal_load"] as OptionButton).selected == 0
 	gs.start_state = (ui["start"] as OptionButton).selected
 	gs.route = ["auto", "nsw", "ecml"][(ui["route"] as OptionButton).selected]
 	gs.time_of_day = ["day", "dusk", "night"][(ui["tod"] as OptionButton).selected]

@@ -10,6 +10,12 @@ var lamps := {}         # id -> StandardMaterial3D (emissive)
 var lamp_colors := {}
 var view_points := {}   # name -> Transform3D (local)
 var view_order: Array[String] = []
+var view_anchor := {}   # name -> Node3D the view is fixed to (default: this cab)
+var view_outside := {}  # name -> true for positions outside the cab (torch at night)
+var quick_views: Array[String] = []   # views on keys 5..9
+## Volumes the mouse cannot reach through (a closed cabinet): each is
+## [Node3D frame, centre, half extents, door CabControl]; inactive while its door is open.
+var blockers: Array = []
 var flashing := {}      # lamp id -> period (s)
 var _t := 0.0
 ## soft daylight bouncing in through the windows (no GI in most render modes)
@@ -18,7 +24,7 @@ var fill_energy: Array[float] = []
 
 
 ## Add a shadowless fill light; its energy is scaled by set_daylight().
-func add_fill(pos: Vector3, rng: float, energy: float, col := Color(1.0, 0.97, 0.92)) -> OmniLight3D:
+func add_fill(pos: Vector3, rng: float, energy: float, col := Color(1.0, 0.97, 0.92), parent: Node3D = null) -> OmniLight3D:
 	var l := OmniLight3D.new()
 	l.light_color = col
 	l.omni_range = rng
@@ -26,7 +32,7 @@ func add_fill(pos: Vector3, rng: float, energy: float, col := Color(1.0, 0.97, 0
 	l.shadow_enabled = false
 	l.light_specular = 0.0
 	l.light_energy = 0.0
-	add_child(l)
+	(parent if parent else self).add_child(l)
 	l.position = pos
 	fill_lights.append(l)
 	fill_energy.append(energy)
@@ -39,10 +45,55 @@ func set_daylight(level: float) -> void:
 		fill_lights[i].light_energy = fill_energy[i] * level
 
 
-func add_view(nm: String, pos: Vector3, yaw_deg := 0.0, pitch_deg := -8.0) -> void:
+func add_view(nm: String, pos: Vector3, yaw_deg := 0.0, pitch_deg := -8.0, anchor: Node3D = null, outside := false) -> void:
 	var b := Basis.from_euler(Vector3(deg_to_rad(pitch_deg), deg_to_rad(yaw_deg), 0))
 	view_points[nm] = Transform3D(b, pos)
 	view_order.append(nm)
+	if anchor:
+		view_anchor[nm] = anchor
+	if outside:
+		view_outside[nm] = true
+
+
+## Whether the crew would be using a torch at this position at night.
+func needs_torch(view_name: String) -> bool:
+	return view_outside.get(view_name, false)
+
+
+func add_blocker(frame_node: Node3D, centre: Vector3, half: Vector3, door_ctl: CabControl) -> void:
+	blockers.append([frame_node, centre, half, door_ctl])
+
+
+## Distance along a ray to the nearest closed cabinet (INF if none is in the way).
+func block_distance(origin: Vector3, dir: Vector3) -> float:
+	var best := INF
+	for bl in blockers:
+		var dc: CabControl = bl[3]
+		if dc and dc.value > 0.5:
+			continue
+		var gt: Transform3D = (bl[0] as Node3D).global_transform
+		var inv := gt.affine_inverse()
+		var o := inv * origin
+		var d := inv.basis * dir
+		var lo: Vector3 = bl[1] - bl[2]
+		var hi: Vector3 = bl[1] + bl[2]
+		var tmin := -INF
+		var tmax := INF
+		var miss := false
+		for a in range(3):
+			if absf(d[a]) < 1e-9:
+				if o[a] < lo[a] or o[a] > hi[a]:
+					miss = true
+					break
+			else:
+				var t1 := (lo[a] - o[a]) / d[a]
+				var t2 := (hi[a] - o[a]) / d[a]
+				tmin = maxf(tmin, minf(t1, t2))
+				tmax = minf(tmax, maxf(t1, t2))
+		if miss or tmax < maxf(tmin, 0.0):
+			continue
+		best = minf(best, (gt * (o + d * maxf(tmin, 0.0)) - origin).length())
+	return best
 
 
 func c(id: String) -> CabControl:
@@ -217,6 +268,91 @@ func wheel(id: String, title: String, parent: Node3D, pos: Vector3, rot: Vector3
 	ctl.rot_axis = Vector3(0, 0, -360.0 * turns_total)
 	ctl.setup_part(pivot)
 	ctl.pick_extent = Vector3(r * 1.05, r * 1.05, 0.04)
+	return ctl
+
+
+## Hinged cabinet door: click to open or close. The panel lies in the host's
+## XY plane facing +Z with its hinge on the host's Y axis; it extends along +X
+## (hinge on the left) or -X (hinge on the right) and swings out towards +Z.
+## Value 1 = open. Controls behind it can only be reached once it is open.
+func door(id: String, title: String, parent: Node3D, pos: Vector3, rot: Vector3, size: Vector2, mat: Material,
+		help := "", hinge_left := true, open_deg := 105.0, legend := "") -> CabControl:
+	var ctl := _host(parent, pos, rot)
+	_register(ctl, id, title, help)
+	ctl.kind = CabControl.Kind.TOGGLE
+	ctl.labels = ["CLOSED", "OPEN"]
+	ctl.set_meta("door", true)
+	var pivot := Node3D.new()
+	ctl.add_child(pivot)
+	var sx := 1.0 if hinge_left else -1.0
+	MU.box(pivot, Vector3(size.x, size.y, 0.025), Vector3(sx * size.x * 0.5, 0, 0.0125), mat)
+	# handle near the free edge, hinges on the other
+	var steel := MU.mat(Color(0.7, 0.7, 0.72), 0.3, 0.8, "door_handle")
+	MU.box(pivot, Vector3(0.025, 0.12, 0.03), Vector3(sx * (size.x - 0.06), 0, 0.035), steel)
+	for hy in [-size.y * 0.35, size.y * 0.35]:
+		MU.cyl(pivot, 0.012, 0.08, Vector3(0, hy, 0.01), steel, Vector3.ZERO, 8)
+	if legend != "":
+		MU.label(pivot, legend, Vector3(sx * size.x * 0.5, size.y * 0.32, 0.027), minf(0.0012, size.x * 0.0014), Color(0.95, 0.95, 0.9), Vector3.ZERO, 32)
+	ctl.rot_axis = Vector3(0, -open_deg * sx, 0)
+	ctl.setup_part(pivot)
+	ctl.pick_extent = Vector3(size.x * 0.5, size.y * 0.5, 0.025)
+	ctl.pick_offset = Vector3(sx * size.x * 0.5, 0, 0.02)
+	ctl.set_meta("pick_node", pivot)
+	return ctl
+
+
+## Angle cock / isolating cock: handle along the pipe = open, across = closed.
+## Faces +Z; the pipe runs along local Y.
+func cock(id: String, title: String, parent: Node3D, pos: Vector3, rot: Vector3, open: bool, help := "") -> CabControl:
+	var ctl := _host(parent, pos, rot)
+	_register(ctl, id, title, help)
+	ctl.kind = CabControl.Kind.TOGGLE
+	ctl.labels = ["CLOSED", "OPEN"]
+	var body := MU.mat(Color(0.25, 0.25, 0.26), 0.5, 0.6, "cock_body")
+	MU.cyl(ctl, 0.035, 0.12, Vector3.ZERO, body, Vector3.ZERO, 10)
+	var pivot := Node3D.new()
+	ctl.add_child(pivot)
+	pivot.position = Vector3(0, 0, 0.04)
+	MU.box(pivot, Vector3(0.025, 0.16, 0.02), Vector3(0, 0.07, 0.0), MU.mat(Color(0.8, 0.1, 0.06), 0.5, 0.0, "cock_handle"))
+	ctl.rot_axis = Vector3(0, 0, 90)
+	ctl.value = 1.0 if open else 0.0
+	ctl.setup_part(pivot)
+	# value 0 rotates the handle across the pipe
+	ctl.part_base_rot = Vector3(0, 0, -90)
+	ctl._apply()
+	ctl.pick_extent = Vector3(0.06, 0.1, 0.05)
+	ctl.pick_offset = Vector3(0, 0.05, 0.04)
+	ctl.set_meta("pick_node", ctl)
+	return ctl
+
+
+## Battery isolating knife switch: the blade swings down out of its jaws.
+func knife(id: String, title: String, parent: Node3D, pos: Vector3, rot: Vector3, help := "") -> CabControl:
+	var ctl := _host(parent, pos, rot)
+	_register(ctl, id, title, help)
+	ctl.kind = CabControl.Kind.TOGGLE
+	ctl.labels = ["OFF", "ON"]
+	var base := MU.mat(Color(0.12, 0.12, 0.12), 0.7, 0.0, "knife_base")
+	var copper := MU.mat(Color(0.72, 0.45, 0.25), 0.35, 0.9, "knife_copper")
+	MU.box(ctl, Vector3(0.22, 0.34, 0.03), Vector3(0, 0, 0.015), base)
+	for x in [-0.05, 0.05]:
+		MU.box(ctl, Vector3(0.02, 0.05, 0.05), Vector3(x, 0.12, 0.05), copper)
+		MU.box(ctl, Vector3(0.02, 0.04, 0.04), Vector3(x, -0.13, 0.045), copper)
+	var pivot := Node3D.new()
+	ctl.add_child(pivot)
+	pivot.position = Vector3(0, -0.13, 0.06)
+	for x in [-0.05, 0.05]:
+		MU.box(pivot, Vector3(0.012, 0.27, 0.035), Vector3(x, 0.13, 0), copper)
+	MU.box(pivot, Vector3(0.16, 0.03, 0.03), Vector3(0, 0.22, 0.0), base)
+	MU.cyl(pivot, 0.018, 0.14, Vector3(0, 0.22, 0.06), MU.mat(Color(0.75, 0.1, 0.05), 0.5, 0.0, "knife_handle"), Vector3(90, 0, 0), 10)
+	# off: blade swung out and down
+	ctl.rot_axis = Vector3(-100, 0, 0)
+	ctl.part_base_rot = Vector3(100, 0, 0)
+	ctl.setup_part(pivot)
+	ctl.part_base_rot = Vector3(100, 0, 0)
+	ctl._apply()
+	ctl.pick_extent = Vector3(0.12, 0.18, 0.08)
+	ctl.pick_offset = Vector3(0, 0, 0.06)
 	return ctl
 
 

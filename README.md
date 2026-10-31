@@ -1,6 +1,6 @@
 # Traingame
 
-A realistic train-driving simulator about **starting up and driving** real trains, with every lever, switch, valve, button and circuit breaker in the cab working. Built with **Godot 4.6** for **Windows and Linux** (Fedora included).
+A realistic train-driving simulator about **starting up and driving** real trains, with every lever, switch, valve, button and circuit breaker in the cab working: an NSW D set "Mariyung", LNER A4 "Mallard", and a pair of Pacific National 92 class diesels on a coal train. Built with **Godot 4.6** for **Windows and Linux** (Fedora included).
 
 Made by **Lex Sclavos**.
 
@@ -11,6 +11,11 @@ Made by **Lex Sclavos**.
 | ![Wattle Gully station](docs/screenshots/nsw_station.jpg) | ![Mallard at the crossing gates at dusk](docs/screenshots/a4_dusk.jpg) |
 | ![A level crossing at night, booms down as a Mariyung approaches](docs/screenshots/nsw_crossing_night.jpg) | ![Mallard at Corby Glen on a foggy night](docs/screenshots/a4_fog_night.jpg) |
 | ![Rain on the Mariyung's windscreen](docs/screenshots/mariyung_rain.jpg) | ![Mariyung in fog](docs/screenshots/mariyung_fog.jpg) |
+
+| Pacific National 92 class pair on a coal train | |
+|---|---|
+| ![Two 92 class at the head of a loaded coal train](docs/screenshots/c92_outside.jpg) | ![The 92 class driver's desk](docs/screenshots/c92_cab.jpg) |
+| ![The engine control panel opened: circuit breakers and engine start](docs/screenshots/c92_ecp.jpg) | ![The battery box opened on the walkway](docs/screenshots/c92_battery.jpg) |
 
 ## The trains
 
@@ -49,6 +54,22 @@ Simulated systems:
 
 Real figures used: 3 cylinders 18½ × 26 in, 6 ft 8 in drivers, 250 psi, giving **35,455 lbf** tractive effort (the sim reproduces this), 41¼ sq ft grate, 5,000 gallon / 8 ton tender, loco 102 tons 19 cwt.
 
+### Pacific National 92 class pair on a coal train (diesel-electric)
+Two UGL C44aci locomotives (GE 7FDL-16 engines, AC traction) working in multiple at the head of 5 to 60 Hunter Valley coal hoppers, loaded or empty. You can start both up from cold, set the second one up to trail, couple them up, and drive both from the front cab, like a real crew.
+
+Simulated systems:
+- **Two complete locomotives**, each with its own **battery box** out on the left walkway (two doors and a knife-type battery isolating switch), an **engine control panel** behind the driver's seat (12 circuit breakers, the engine control switch, fuel prime, engine start and engine stop), an **air brake cabinet** behind the second person's seat (brake valve cut-out LEAD / TRAIL, dead engine cock, four gauges) and **engine room doors** that open on the V16 and its turbocharger. Every cabinet has to be opened before you can reach what's inside, and the mouse can't reach through closed doors or walls.
+- **Engine start**: battery, breakers, the locomotive computer boots (25 s), fuel prime until the fuel pressure is up, then crank on the main alternator until it fires. Oil pressure, cooling water that warms up (load is limited until it reaches 40 °C), radiator fans, fuel burn and battery charging.
+- **Multiple-unit working**: the second unit follows the controlling cab through the **MU jumper** only when its reverser is centred, its CONTROL switch is off, its engine control switch is in RUN and its brake valve is cut out (TRAIL). The displays say why a unit isn't loading. You can drive from the second unit's cab too.
+- **Coupling**: brake pipe and main reservoir equalising hoses with **angle cocks** on both units, and the MU jumper cable (still stowed in its dummy socket in a cold start).
+- **Desktop controls**: throttle (idle and 8 notches), **dynamic brake** (set-up, then braking effort, interlocked with the throttle), reverser, **automatic brake** (release, minimum, service, full service, suppression, handle off, emergency), **independent brake** with **bail-off**, sand, horn, alerter, and an emergency brake valve and **emergency fuel cut-off** on the second person's side.
+- **Air brakes for the whole train**: engine-driven compressors with governors, main reservoirs, equalising reservoir and relay valve with a **flow indicator**, and a brake pipe through every wagon with triple valves, auxiliary and emergency reservoirs and an empty/load device. An application takes seconds to reach the last wagon and a release takes minutes to recharge the train; the **end-of-train** pressure shows on the display; **brake test**; **PCS** (penalty) reset in suppression.
+- **AC traction**: 535 kN starting per unit with creep control, 3,184 kW at the rail, sanding, wheel slip; the dynamic brake is limited by its grids.
+- **Alerter** (vigilance) with penalty brake, **handbrakes** at each No. 2 end, twin headlights, **ditch lights** (they flash for 15 s whenever the horn sounds in AUTO), markers, cab, gauge and walkway lights, wipers, cab air-conditioning and the train radio.
+- **Two computer displays** in each cab: speed, controller, tractive effort and dynamic brake, and the air brake; plus engine, air and alarm pages for both units.
+
+Real figures used: 22 m long, 139 t, Co-Co with 1016 mm wheels, 3,184 kW traction power, 535 kN starting tractive effort, 13,500 L fuel tank, 80 km/h for loaded coal trains; hoppers 23 t empty and 120 t loaded.
+
 ### Checked against reality
 The physics is tested headlessly (`tests/`), and these checks run on every push:
 
@@ -61,9 +82,13 @@ The physics is tested headlessly (`tests/`), and these checks run on every push:
 | A4 raising steam from cold | about 4 hours | 4-6 hours |
 | Mariyung service brake | 1.05-1.1 m/s² | 1.01 m/s² |
 | Mariyung acceleration (30% load) | 0.76 m/s² | 0.84 m/s² tare |
+| 92 class pair starting a loaded train | 431 + 431 kN (adhesion limit with creep control) | 535 kN each at most |
+| 92 class pair, 20 loaded wagons (2,680 t), 0-60 km/h on the level | 72 s, 756 m | power-limited: 6.4 MW for 2,680 t |
+| Same train up the 1 in 40 | holds 32 km/h | about 34 km/h from power and weight |
+| Same train, full service brake from 53 km/h | brakes reach the last wagon in 3 s, stops in 279 m | 0.4-0.5 m/s² for loaded freight |
 
 ### Every control is tested
-`tests/control_effects.gd` operates every lever, switch, button and valve in both cabs, one at a time, and checks that each one changes something in the simulation, the cab or the train (in the situation where it matters, for example EB reset after an emergency brake). `tests/pick_test.gd` checks that every control can be reached and clicked from a cab position. `tests/crossing_test.gd` runs a train past every level crossing at speeds up to 200 km/h and checks that the road is shut before the train gets there, that no car is on the crossing, and that it opens again afterwards. All of them run on every push.
+`tests/control_effects.gd` operates every lever, switch, button and valve in every cab (105 on the 92 class pair, inside and out), one at a time, and checks that each one changes something in the simulation, the cab or the train (in the situation where it matters, for example EB reset after an emergency brake). `tests/pick_test.gd` checks that every control can be reached and clicked from a cab position, and that nothing inside a closed cabinet can be. `tests/crossing_test.gd` runs a train past every level crossing at speeds up to 200 km/h and checks that the road is shut before the train gets there, that no car is on the crossing, and that it opens again afterwards. All of them run on every push.
 
 ## Graphics
 Everything you see is generated: the models are built in code and the textures come from `tools/gen_textures.py`.
@@ -75,15 +100,15 @@ Everything you see is generated: the models are built in code and the textures c
 - **Track** with ballast shoulders, concrete or timber sleepers, rusty rail webs and polished heads, girder bridges.
 - **Lineside**: overhead line masts with cantilevers and insulators, telegraph poles, colour-light or semaphore signals, boundary fences, a station with a building, canopy, lamps and seats, and houses, farms and water tanks that light up at night.
 - **Level crossings**: country roads cross both lines. On the NSW line the flashing lights, bells and boom gates are worked by the approaching train (about 25 s warning) and cars queue at the stop line, then drive on once the booms are up. On the 1930s line the crossing keeper swings big white timber gates across the road well before you arrive, and a "W" board 400 m out is your cue to whistle.
-- **Trains**: the D set's brushed stainless steel cars with a glossy black wrap-around windscreen and red doors; Mallard's clear-coated garter blue with its wedge-shaped, ridged nose, nameplates and stainless trim; teak coaches with beading and lettering. Detailed bogies and running gear throughout.
+- **Trains**: the D set's brushed stainless steel cars with a glossy black wrap-around windscreen and red doors; Mallard's clear-coated garter blue with its wedge-shaped, ridged nose, nameplates and stainless trim; teak coaches with beading and lettering; the 92 class in Pacific National blue and yellow with its safety cab, dynamic brake hatch, radiator wings and turning fans, five-chime horn and yellow handrails, and aluminium coal hoppers heaped with coal. Detailed bogies and running gear throughout.
 - **Cabs**: textured panels, moulded seats, crisp dial faces drawn at load time, daylight fill lighting, a glowing textured firebed.
-- **Steam and smoke** that are lit by the sun, billow and drift.
+- **Steam and smoke** that are lit by the sun, billow and drift; **diesel exhaust** that is a faint haze at idle, a grey-brown plume under load and black while the turbo catches up.
 
 Pick **Low**, **Medium**, **High** or **Ultra** in the menu. Ultra adds SDFGI global illumination, 8K shadows, SMAA, more trees and grass, and longer view distances. Ultra needs a recent dedicated GPU; Low is meant for integrated graphics. If Vulkan isn't available, Godot falls back to OpenGL automatically.
 
 ## Routes
 Both routes are continuous loops with curves, transition spirals, superelevation (cant), gradients, speed boards and distance posts.
-- **Hawkesbury Loop** (17.7 km): NSW-style electrified line with sandstone cuttings, bridges, gum trees, a 1 in 40 bank, curves down to 300 m radius, two level crossings with boom gates, and a platform at Wattle Gully.
+- **Hawkesbury Loop** (17.7 km): NSW-style electrified line with sandstone cuttings, bridges, gum trees, a 1 in 40 bank, curves down to 300 m radius, two level crossings with boom gates, and a platform at Wattle Gully. The coal train starts at the signal before the bridge on the station approach, at the foot of the bank.
 - **Stoke Bank Loop** (43.4 km): a 1930s East Coast Main Line-style circuit with telegraph poles, bullhead rail on chairs, jointed track, 11 km of 1 in 200 descent for record attempts, water troughs, and three gated level crossings.
 
 Take a curve too fast and you derail.
@@ -108,33 +133,37 @@ To export yourself: *Project → Export*, install the export templates when aske
 
 | Key | Everywhere |
 |---|---|
-| 1 / 2 | cycle cab positions / second position (fireman, or the Mariyung rear panel) |
+| 1 / 2 | cycle cab positions (Shift+1 goes back) / second position (fireman, Mariyung rear panel, 92 class second person) |
+| 5 - 9 | 92 class: driver, engine control panel, battery box, coupling, second unit's cab |
 | 3 / 4 | outside camera (drag to orbit, scroll to zoom) / lineside camera |
 | + / − | time acceleration up to ×120 (for raising steam or charging air) |
 | F1 / F2 / F3 | help / **start-up checklist** / technical details |
 | Esc | pause menu |
 
-| Key | Mariyung | Mallard |
-|---|---|---|
-| A / D | controller towards brake / power | regulator close / open |
-| W / S | direction controller | reverser forward / back |
-| ; / ' | | vacuum brake release / apply |
-| Space / N | horn high / low | chime whistle |
-| Backspace | controller to EB | shut regulator, full brake |
-| Q | acknowledge vigilance / ETCS | |
-| F | driver's safety pedal | |
-| K, P, H, L | key, pantograph, HSCB, headlights | |
-| T / Y / U | doors left / right / close | |
-| J, X, C | | large ejector, sanders, cylinder cocks |
-| R, E, Z | | firehole door, fire a shovelful, choose part of the grate |
-| B, I, O | | blower, live injector, exhaust injector |
-| F5 / F6, PgUp/PgDn | | AI fireman / AI driver, AI driver speed |
+| Key | Mariyung | Mallard | 92 class |
+|---|---|---|---|
+| A / D | controller towards brake / power | regulator close / open | throttle down / up; at idle, A sets up and adds dynamic brake |
+| W / S | direction controller | reverser forward / back | reverser |
+| ; / ' | | vacuum brake release / apply | automatic brake release / apply |
+| [ / ] | | | independent brake apply / release |
+| Space / N | horn high / low | chime whistle | horn |
+| Backspace | controller to EB | shut regulator, full brake | automatic brake to emergency |
+| Q | acknowledge vigilance / ETCS | | alerter |
+| F | driver's safety pedal | | |
+| K, P, H, L | key, pantograph, HSCB, headlights | | L: headlights |
+| T / Y / U | doors left / right / close | | |
+| J, X, C | | large ejector, sanders, cylinder cocks | X: sand |
+| R, E, Z | | firehole door, fire a shovelful, choose part of the grate | |
+| B, I, O | | blower, live injector, exhaust injector | B (hold): bail off |
+| F5 / F6, PgUp/PgDn | | AI fireman / AI driver, AI driver speed | |
 
 ## Start-up from cold
 
 Press **F2** in game for a live checklist that ticks itself off.
 
 **Mariyung:** rear panel (key 2): battery ON → master key ON → wait for TMS/DMI → PAN UP (aux compressor charges first) → HSCB close → aux converter starts → main reservoir to 750 kPa (use +) → park brake release → DMI: DATA then START → TMS: BRAKE TEST with the controller in B7 → headlights → direction FORWARD → doors closed → foot on the safety pedal (F) → power.
+
+**92 class:** key 7 (battery box, left walkway): open both doors, battery switch ON → key 6 (engine control panel): open the door, all 12 breakers ON, wait for the computer → engine control switch to ISOLATE, hold FUEL PRIME until the fuel pressure passes 200 kPa, hold ENGINE START until it fires → the same in the second unit (key 9 for its cab, 1 to step through its battery box and cabinets), then set it to trail: brake cabinet to TRAIL, reverser centred, CONTROL off, engine control switch to RUN → key 8 (coupling): open the four angle cocks and plug in the MU jumper → front cab: engine control switch RUN, brake valve LEAD → let the main reservoirs pump up (use +) and the brake pipe charge right through → handbrakes off at each No. 2 end → CONTROL, ENGINE RUN, GENERATOR FIELD on → brake test: a reduction, watch it reach the rear on the display, release → headlights and markers → reverser FORWARD, release the brakes, notch up.
 
 **Mallard:** check the glass → open the firehole door, fire 15-20 shovelfuls around the grate → firelighters → dampers open, door almost shut → (time ×60-120) build the fire as pressure rises → blower on above about 40 psi → near 250 psi: test the gauge glass and an injector → large ejector until 21 in, then small ejector → tender hand brake off → cylinder cocks open, reverser full forward, whistle, ease the regulator → close the cocks once she's warm → notch up as speed rises.
 
@@ -143,18 +172,18 @@ Press **F2** in game for a live checklist that ticks itself off.
 scripts/
   core/game_settings.gd   menu settings and key map (autoload)
   track/                  route definitions and the track geometry
-  world/                  terrain, vegetation, animals, track meshes, overhead wiring, scenery, level crossings, sky, steam effects
-assets/
-  shaders/                sky, terrain, water and foliage shaders
-  textures/               generated textures (see tools/gen_textures.py)
-tools/                    texture generator and import settings
-  train/                  vehicles, procedural models, train physics
-  cab/                    interactive controls, gauges, screens, and the two cabs
-  sim/                    Mariyung electrics/air/safety systems and the A4 boiler/fire/steam engine
+  world/                  terrain, vegetation, animals, track meshes, overhead wiring, scenery, level crossings, sky, steam and diesel effects
+  train/                  vehicles, procedural models (D set, A4, 92 class and coal hoppers), train physics
+  cab/                    interactive controls, gauges, screens, and the cabs
+  sim/                    Mariyung electrics/air/safety systems, the A4 boiler/fire/steam engine, the 92 class pair's engines, MU control and train air brake
   player/camera_rig.gd    cab views, free look, picking controls
   ui/                     main menu and HUD
   audio/train_audio.gd    synthesised sound (no audio files)
-tests/                    headless physics checks and screenshot scripts
+assets/
+  shaders/                sky, terrain, water, foliage and windscreen shaders
+  textures/               generated textures (see tools/gen_textures.py)
+tools/                    texture generator and import settings
+tests/                    headless physics checks, control tests and screenshot scripts
 ```
 Models and sounds are built from code, and every texture is generated by `tools/gen_textures.py` (Python with numpy, OpenCV, Pillow and SciPy). To change a texture, edit the script and run `python3 tools/gen_textures.py <name>`, then open the project so Godot re-imports it. To tinker:
 - **New route:** add an entry in `scripts/track/route_defs.gd`. Half of a loop is listed as straights and curves that turn exactly 180°, and the builder mirrors it so the loop always closes.
@@ -165,7 +194,9 @@ Run the checks yourself:
 ```
 godot --headless --path . -s res://tests/run_sim_test.gd -- a4
 godot --headless --path . -s res://tests/run_sim_test.gd -- mariyung
+godot --headless --path . -s res://tests/run_sim_test.gd -- c92
 godot --headless --path . -s res://tests/control_effects.gd -- mariyung
+godot --headless --path . -s res://tests/control_effects.gd -- c92
 godot --headless --path . -s res://tests/crossing_test.gd -- a4
 ```
 
@@ -173,6 +204,7 @@ godot --headless --path . -s res://tests/crossing_test.gd -- a4
 - The **A4** is built from published dimensions and performance. The cab layout is a faithful approximation; exact fitting positions vary between photographs and eras.
 - The **Mariyung's** body is modelled as unpainted stainless steel with a black cab front and red doors; treat the exact shapes and colours as an approximation.
 - The **Mariyung's** published performance figures are used directly. Its cab layout, start-up order, ETCS behaviour and TMS pages follow general modern NSW EMU and ETCS practice rather than the exact (unpublished) D set procedures.
+- The **92 class** is modelled from published dimensions and photographs; its desk layout, breaker names and start-up order follow general GE and Australian practice, since the exact (unpublished) Pacific National procedures differ in detail. The driver sits on the left, as in NSW.
 - Both routes are fictional, styled on the Hawkesbury/Central Coast line and the ECML around Stoke Bank.
 
 ## Roadmap ideas

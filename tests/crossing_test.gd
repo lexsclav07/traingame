@@ -2,7 +2,7 @@ extends SceneTree
 ## Level crossings: the protection must be complete (booms down / gates shut
 ## across the road) before a train at line speed reaches the road, and must
 ## clear again once the train has gone.
-## usage: godot --headless -s res://tests/crossing_test.gd -- a4|mariyung
+## usage: godot --headless -s res://tests/crossing_test.gd -- a4|mariyung|c92
 var game: Node
 var failures := 0
 var cars_seen := 0
@@ -11,7 +11,7 @@ var cars_seen := 0
 func _initialize() -> void:
 	var a := OS.get_cmdline_user_args()
 	var gs = root.get_node("GameSettings")
-	gs.train = 1 if (a.size() > 0 and a[0] == "a4") else 0
+	gs.train = {"mariyung": 0, "a4": 1, "c92": 2}.get(a[0] if a.size() > 0 else "mariyung", 0)
 	gs.start_state = 2
 	gs.graphics_quality = 0
 	game = load("res://scenes/game.tscn").instantiate()
