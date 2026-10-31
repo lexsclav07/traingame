@@ -2,7 +2,8 @@ extends SceneTree
 ## Flexible screenshot tool for graphics work.
 ## usage: -s res://tests/shot.gd -- <a4|mariyung> <cold|prep|ready> <day|dusk|night> <clear|rain> <quality 0-3> <prefix> <shots>
 ## shots: comma list of  cab:<view>:<yaw>:<pitch>  |  ext:<yaw>:<pitch>:<dist>  |  line  |
-##        free:<s>:<lateral>:<height>:<yaw deg>:<pitch deg>  |  move:<metres>:<speed>
+##        free:<s>:<lateral>:<height>:<yaw deg>:<pitch deg>  |  move:<metres>:<speed>  |
+##        ctl:<id>:<value>  |  sim:<variable>:<value>  |  wait:<frames>
 var game: Node
 var shots: Array = []
 var idx := 0
@@ -41,7 +42,7 @@ func _process(_d: float) -> bool:
 	wait += 1
 	if wait >= settle:
 		var spec: String = shots[idx]
-		if not spec.begins_with("move"):
+		if not (spec.begins_with("move") or spec.begins_with("ctl") or spec.begins_with("sim") or spec.begins_with("wait")):
 			root.get_viewport().get_texture().get_image().save_png(_out() + "%s_%02d.png" % [prefix, idx])
 			print("saved %s_%02d (%s)" % [prefix, idx, spec])
 		idx += 1
@@ -74,6 +75,17 @@ func _setup(spec: String) -> void:
 			var b: Basis = f.basis * Basis.from_euler(Vector3(deg_to_rad(float(p[5])), deg_to_rad(float(p[4])), 0))
 			rig.cam.fov = 62.0
 			rig.cam.global_transform = Transform3D(b, f.origin + Vector3.UP * float(p[3]))
+		"ctl":
+			# ctl:<control id>:<value>
+			game.cab.c(p[1]).set_value(float(p[2]))
+			settle = 2
+		"sim":
+			# sim:<variable>:<value>
+			game.sim.set(p[1], float(p[2]))
+			settle = 2
+		"wait":
+			# wait:<frames> (let the game run, e.g. wipers sweeping)
+			settle = int(p[1])
 		"move":
 			# jump the train along the line and give it speed (no rendering needed)
 			var secs := float(p[1])

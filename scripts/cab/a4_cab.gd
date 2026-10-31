@@ -16,6 +16,8 @@ var door_l: Node3D
 var door_r: Node3D
 var shovel: Node3D
 var scoop_ind: Label3D
+var shovel_coal: Node3D
+var spec_mat: ShaderMaterial
 
 
 func build(cab_root: Node3D) -> void:
@@ -41,7 +43,7 @@ func build(cab_root: Node3D) -> void:
 		MU.box(f, Vector3(0.82, 0.24, 0.04), Vector3(0, 3.85, 0), blue)
 		MU.box(f, Vector3(0.12, 0.65, 0.04), Vector3(-0.35, 3.42, 0), blue)
 		MU.box(f, Vector3(0.12, 0.65, 0.04), Vector3(0.35, 3.42, 0), blue)
-		MU.box(f, Vector3(0.6, 0.62, 0.01), Vector3(0, 3.42, 0), glass)
+		MU.box(f, Vector3(0.6, 0.62, 0.01), Vector3(0, 3.42, 0), _spectacle_glass())
 	# side sheets with a sliding window
 	for sx in [-1.0, 1.0]:
 		var x: float = sx * 1.355
@@ -277,7 +279,18 @@ func build(cab_root: Node3D) -> void:
 	add_child(shovel)
 	shovel.position = Vector3(0.55, FLOOR + 0.05, 13.4)
 	MU.box(shovel, Vector3(0.26, 0.02, 0.32), Vector3(0, 0.02, -0.16), steel)
+	MU.box(shovel, Vector3(0.02, 0.06, 0.3), Vector3(-0.13, 0.05, -0.16), steel)
+	MU.box(shovel, Vector3(0.02, 0.06, 0.3), Vector3(0.13, 0.05, -0.16), steel)
 	MU.cyl(shovel, 0.015, 0.8, Vector3(0, 0.06, 0.25), MU.mat(Color(0.45, 0.32, 0.2), 0.7), Vector3(80, 0, 0), 6)
+	MU.box(shovel, Vector3(0.12, 0.03, 0.03), Vector3(0, 0.12, 0.64), MU.mat(Color(0.45, 0.32, 0.2), 0.7))
+	# a shovelful of coal, shown once one has been taken from the coal hole
+	shovel_coal = Node3D.new()
+	shovel.add_child(shovel_coal)
+	var coal_mat := TX.pbr("coal_albedo", "coal_normal", Color.WHITE, 0.55, 0.0, Vector3.ONE * 4.0, false, 1.0, "coal_lumps")
+	for k in range(7):
+		var lump := MU.sphere(shovel_coal, 0.05 + 0.015 * (k % 3), Vector3(-0.08 + (k % 4) * 0.055, 0.05, -0.08 - (k / 4) * 0.12), coal_mat, 6)
+		lump.scale = Vector3(1.0, 0.6, 1.1)
+	shovel_coal.visible = false
 
 	# ---------------------------------------------------------------- views
 	add_view("Driver (seated)", Vector3(-0.92, 2.78, 12.85), 0.0, -6.0)
@@ -381,6 +394,17 @@ func _backhead_details(bh: Node3D, black: Material, brass: Material, copper: Mat
 	MU.box(bh, Vector3(1.7, 0.03, 0.02), Vector3(0, 3.82, 0.045), steel)
 
 
+## Front spectacle glasses: rain drops in wet weather (no wipers on an A4).
+func _spectacle_glass() -> ShaderMaterial:
+	if spec_mat == null:
+		spec_mat = TX.shader_mat("res://assets/shaders/windscreen.gdshader")
+		spec_mat.set_shader_parameter("drops_tex", TX.t("raindrops"))
+		spec_mat.set_shader_parameter("glass_size", Vector2(1.8, 1.24))     # box faces use a third of the UV range
+		spec_mat.set_shader_parameter("rain", 1.0 if GameSettings.weather == "rain" else 0.0)
+		spec_mat.set_shader_parameter("tint", Color(0.75, 0.82, 0.85, 0.08))
+	return spec_mat
+
+
 var _anim_shovel := 0.0
 
 
@@ -394,9 +418,17 @@ func update_visuals(sim: A4Sim, delta: float) -> void:
 	gauges["tender_water"].set_value(0, sim.tender_water / 4.546)
 	# water in the glasses (bounces a little when steaming hard)
 	var lv := clampf(sim.level + sin(Time.get_ticks_msec() * 0.011) * 0.01 * clampf(sim.cyl_flow, 0.0, 1.0), -0.05, 1.05)
-	for col in water_cols:
-		var h := clampf(lv, 0.0, 1.0) * 0.46
-		col.visible = lv > 0.0
+	for gi in range(water_cols.size()):
+		var col := water_cols[gi]
+		# blowing through: the glass empties, then refills to the true level
+		var k: float = sim.gauge_blow[gi] if gi < sim.gauge_blow.size() else 0.0
+		var f := 1.0
+		if k > 2.0:
+			f = k - 2.0
+		elif k > 0.0:
+			f = 1.0 - k / 2.0
+		var h := clampf(lv * f, 0.0, 1.0) * 0.46
+		col.visible = h > 0.002
 		col.scale = Vector3(1, maxf(h / 0.46, 0.001), 1)
 		col.position.y = 2.28 + h * 0.5 - 0.0
 	cutoff_pointer.position.y = clampf(sim.cutoff / 0.75, -1.0, 1.0) * 0.15
@@ -429,6 +461,7 @@ func update_visuals(sim: A4Sim, delta: float) -> void:
 	shovel.position = Vector3(0.55 - a * 0.45, FLOOR + 0.05 + a * 0.4, 13.4 - a * 2.2)
 	shovel.rotation_degrees = Vector3(-a * 20.0, 0, 0)
 	shovel.visible = true
+	shovel_coal.visible = sim.shovel_loaded
 	# firing zones only clickable through the open door
 	for i in range(4):
 		controls["fire_zone_%d" % i].enabled = door > 0.45

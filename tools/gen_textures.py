@@ -624,6 +624,51 @@ def make_interior():
     save_gray("tarnish", np.clip(t, 0, 1))
 
 
+def make_raindrops():
+    """Water drops on glass (RGBA, linear data): RG = surface slope (0.5 = flat),
+    B = drop mask with a darker rim, A = per-drop random id (1 = no drop).
+    The windscreen shader shows a drop once its id is below the wetness."""
+    print("raindrops")
+    n = 512
+    rgba = np.zeros((n, n, 4), np.float32)
+    rgba[..., 0:2] = 0.5
+    rgba[..., 3] = 1.0
+    r = np.random.default_rng(701)
+    occ = np.zeros((n, n), bool)
+    placed = 0
+    for _ in range(6000):
+        if placed >= 1100:
+            break
+        rad = float(np.clip(r.gamma(2.2, 1.6), 1.6, 11.0))
+        cx, cy = r.random() * n, r.random() * n
+        ry = rad * r.uniform(1.0, 1.35)            # slightly elongated
+        x0, x1 = int(cx - rad - 2), int(cx + rad + 3)
+        y0, y1 = int(cy - ry - 2), int(cy + ry + 3)
+        xs = np.arange(x0, x1)
+        ys = np.arange(y0, y1)
+        X, Y = np.meshgrid(xs, ys)
+        dx = (X + 0.5 - cx) / rad
+        dy = (Y + 0.5 - cy) / ry
+        d = np.sqrt(dx * dx + dy * dy)
+        inside = d < 1.0
+        Xw, Yw = X % n, Y % n
+        if occ[Yw[inside], Xw[inside]].mean() > 0.15:
+            continue
+        rid = r.random()
+        nz = np.sqrt(np.clip(1.0 - d * d, 0.0, 1.0))
+        mask = np.clip((1.0 - d) * rad / 1.2, 0.0, 1.0)
+        rim = 0.55 + 0.45 * np.clip(nz * 1.6, 0.0, 1.0)
+        sel = inside
+        rgba[Yw[sel], Xw[sel], 0] = 0.5 + dx[sel] * 0.5
+        rgba[Yw[sel], Xw[sel], 1] = 0.5 - dy[sel] * 0.5
+        rgba[Yw[sel], Xw[sel], 2] = (mask * rim)[sel]
+        rgba[Yw[sel], Xw[sel], 3] = rid
+        occ[Yw[sel], Xw[sel]] = True
+        placed += 1
+    print("  drops:", placed)
+    save_rgba("raindrops", rgba)
+
+
 # --------------------------------------------------------------------- environment
 def make_environment():
     print("environment")
@@ -863,7 +908,7 @@ def make_scenery():
 
 JOBS = {"terrain": make_terrain, "track": make_track, "vegetation": make_vegetation,
         "vehicle": make_vehicle, "environment": make_environment, "scenery": make_scenery,
-        "interior": make_interior}
+        "interior": make_interior, "raindrops": make_raindrops}
 
 if __name__ == "__main__":
     want = sys.argv[1:] or list(JOBS)

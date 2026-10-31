@@ -89,6 +89,8 @@ func update_audio(delta: float, _time_scale: float, cab_view: bool) -> void:
 		_smooth("fire", float(s.get("fire", 0.0)), 4.0, delta)
 		_smooth("slip", clampf(float(s.get("slip", 0.0)) / 10.0, 0.0, 1.0), 5.0, delta)
 		_smooth("scoop", clampf(float(s.get("scoop", 0.0)) / 300.0, 0.0, 1.0), 3.0, delta)
+		_smooth("gauge_blow", float(s.get("gauge_blow", 0.0)), 20.0, delta)
+		_smooth("overflow", float(s.get("overflow", 0.0)), 4.0, delta)
 	else:
 		_smooth("traction", float(s.get("traction", 0.0)), 6.0, delta)
 		_smooth("regen", float(s.get("regen", 0.0)), 6.0, delta)
@@ -102,6 +104,10 @@ func update_audio(delta: float, _time_scale: float, cab_view: bool) -> void:
 		_smooth("dsd", float(s.get("dsd", 0.0)), 30.0, delta)
 		_smooth("etcs", float(s.get("etcs", 0.0)), 30.0, delta)
 		_smooth("bc", float(s.get("bc", 0.0)), 3.0, delta)
+		_smooth("hvac", float(s.get("hvac", 0.0)), 0.6, delta)
+		_smooth("demister", float(s.get("demister", 0.0)), 1.2, delta)
+		_smooth("washer", float(s.get("washer", 0.0)), 20.0, delta)
+		_smooth("wiper", float(s.get("wiper", 0.0)), 8.0, delta)
 	var frames := pb.get_frames_available()
 	if frames <= 0:
 		return
@@ -183,6 +189,14 @@ func _steam_sample(n: float, v: float, dt: float) -> float:
 	var fire: float = p.get("fire", 0.0)
 	if fire > 0.01:
 		out += _lowpass("fire_lp", n, 0.03) * fire * 1.2
+	# blowing through the gauge glass: a sharp roar of steam and water at the drain
+	var gb: float = p.get("gauge_blow", 0.0)
+	if gb > 0.01:
+		out += (n - _lowpass("gb_hp", n, 0.35)) * gb * 0.9
+	# water running out of an injector overflow onto the ballast
+	var ov: float = p.get("overflow", 0.0)
+	if ov > 0.01:
+		out += (_lowpass("ov_lp", n, 0.08) - _lowpass("ov_lp2", n, 0.01)) * ov * 0.5
 	var sc: float = p.get("scoop", 0.0)
 	if sc > 0.01:
 		out += (_lowpass("sc_lp", n, 0.2) - _lowpass("sc_hp", n, 0.02)) * sc * 1.2
@@ -222,6 +236,20 @@ func _electric_sample(n: float, v: float, vk: float) -> float:
 	var aux: float = p.get("aux", 0.0)
 	if aux > 0.01:
 		out += (_sq("aux_o", 120.0) * 0.05 + _lowpass("aux_n", n, 0.2) * 0.2) * aux
+	# saloon air-conditioning and cab demister fans (heard faintly in the cab)
+	var hv: float = p.get("hvac", 0.0)
+	if hv > 0.01:
+		out += (_lowpass("hvac_n", n, 0.03) * 0.5 + _osc("hvac_o", 48.0) * 0.015) * hv
+	var dm: float = p.get("demister", 0.0)
+	if dm > 0.01:
+		out += (_lowpass("dm_n", n, 0.12) - _lowpass("dm_n2", n, 0.02)) * 0.35 * dm
+	# washer pump and spray, wiper motor
+	var ws: float = p.get("washer", 0.0)
+	if ws > 0.01:
+		out += (_osc("ws_o", 760.0) * 0.03 + (n - _lowpass("ws_n", n, 0.4)) * 0.12) * ws
+	var wp: float = p.get("wiper", 0.0)
+	if wp > 0.01:
+		out += (_sq("wp_o", 62.0) * 0.012 + _lowpass("wp_n", n, 0.08) * 0.05) * wp
 	# two-tone horn
 	var hh: float = p.get("horn_hi", 0.0)
 	if hh > 0.01:

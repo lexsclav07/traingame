@@ -41,6 +41,17 @@ jobs:
       - name: Physics checks (Mariyung)
         run: timeout 600 ./godot --headless --path . -s res://tests/run_sim_test.gd -- mariyung
 
+      - name: Every cab control can be reached with the mouse
+        run: |
+          timeout 600 ./godot --headless --path . -s res://tests/pick_test.gd -- mariyung
+          timeout 600 ./godot --headless --path . -s res://tests/pick_test.gd -- a4
+
+      - name: Every cab control does something (Mariyung)
+        run: timeout 900 ./godot --headless --path . -s res://tests/control_effects.gd -- mariyung 2
+
+      - name: Every cab control does something (A4)
+        run: timeout 900 ./godot --headless --path . -s res://tests/control_effects.gd -- a4 2
+
       - name: Export Linux and Windows builds
         run: |
           mkdir -p build/linux build/windows

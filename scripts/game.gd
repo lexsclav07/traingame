@@ -140,7 +140,7 @@ func _build_a4() -> void:
 	train.sim = a4
 	effects = Effects.new()
 	add_child(effects)
-	effects.setup(loco)
+	effects.setup(loco, train.vehicles[1] if train.vehicles.size() > 1 else null)
 	# express headcode oil lamps are lit at dusk and night, and the
 	# compartment lights glow warm through the coach windows
 	if gs.time_of_day != "day":

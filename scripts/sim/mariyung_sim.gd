@@ -74,6 +74,19 @@ var horn_lo := 0.0
 var door_chime := 0.0
 var etcs_beep := 0.0
 var _said := {}
+# comfort & cab equipment
+var aux_kw := 0.0               # load on the auxiliary converter
+var ambient_t := 24.0           # outside air temperature (deg C)
+var saloon_t := 22.5
+var hvac_on := false
+var demist_on := false
+var mist := 0.0                 # condensation on the windscreen 0..1
+var radio_ok := false
+var _radio_boot := -1.0
+var washer_t := 0.0             # wash-wipe cycle running (s left)
+var wash_age := 1e4             # seconds since the washer last sprayed
+var wipe_idle := 1e4            # seconds since the wipers last moved
+var wipe_rate := 0.0            # wiper cycles per second right now
 
 
 func setup(t: Train, c: Cab, start_state: int) -> void:
@@ -86,6 +99,10 @@ func setup(t: Train, c: Cab, start_state: int) -> void:
 			n_motor += 1
 	for id in cab.controls:
 		(cab.controls[id] as CabControl).changed.connect(_on_control)
+	var tod: String = GameSettings.time_of_day
+	ambient_t = {"day": 26.0, "dusk": 20.0, "night": 16.0}.get(tod, 24.0) - (4.0 if weather == "rain" else 0.0)
+	saloon_t = ambient_t if start_state == GameSettings.StartState.COLD else 22.5
+	mist = (0.75 if weather == "rain" else (0.4 if tod != "day" else 0.0)) if start_state == GameSettings.StartState.COLD else 0.0
 	match start_state:
 		GameSettings.StartState.COLD:
 			_setc("battery", 0)
@@ -131,6 +148,7 @@ func setup(t: Train, c: Cab, start_state: int) -> void:
 			etcs_mode = "FS"
 			etcs_data = true
 			brake_test = 2
+			radio_ok = true
 			for i in range(bc.size()):
 				bc[i] = 230.0
 	_update_pan_visuals()
@@ -238,6 +256,14 @@ func _on_control(ctl: CabControl) -> void:
 		"pa":
 			if pressed:
 				door_chime = 0.6
+		"washer":
+			if pressed:
+				if bat_v < 80.0 or not _on("mcb_wipers"):
+					notify("Washer: no supply (battery off or wiper circuit breaker off).", "warn")
+				else:
+					washer_t = 4.5
+					wash_age = 0.0
+					sound["washer"] = 1.0
 		"direction":
 			if absf(train.speed) > 0.3:
 				notify("Direction controller interlocked while moving!", "warn")
@@ -324,8 +350,26 @@ func step(dt: float) -> void:
 	_forces(dt, v, vk)
 	_brake_test(dt)
 	_lights()
+	_comfort(dt)
 	_sounds(dt, vk)
-	wiper_phase += dt * [0.0, 0.35, 0.9, 1.5][int(_v("wipers"))] * (1.0 if bat_v > 80.0 and _on("mcb_wipers") else 0.0)
+	# wipers: a wash-wipe cycle runs them even when switched off, and when
+	# switched off mid-stroke they finish the stroke and park
+	var wiper_power := 1.0 if bat_v > 80.0 and _on("mcb_wipers") else 0.0
+	var sel: float = [0.0, 0.35, 0.9, 1.5][int(_v("wipers"))]
+	var spd := sel
+	if washer_t > 0.0:
+		washer_t -= dt
+		spd = maxf(spd, 0.9)
+	if spd == 0.0 and fmod(wiper_phase, 1.0) > 0.0005:
+		spd = 0.9
+	wipe_rate = spd * wiper_power
+	var before := wiper_phase
+	wiper_phase += dt * wipe_rate
+	if sel == 0.0 and washer_t <= 0.0 and int(before) != int(wiper_phase):
+		wiper_phase = floor(wiper_phase)      # back at the park position
+	wipe_idle = 0.0 if wipe_rate > 0.0 else wipe_idle + dt
+	wash_age += dt
+	sound["washer"] = maxf(0.0, float(sound.get("washer", 0.0)) - dt * 1.5)
 
 
 func _electrics(dt: float) -> void:
@@ -366,10 +410,12 @@ func _electrics(dt: float) -> void:
 			_said.erase("etcs_iso")
 			etcs_mode = "NP"
 			dmi_boot = 14.0
-	# pantograph & aux compressor
+	# pantograph & aux compressor (the pan valve is held up by the control supply)
 	if not (bat_on and bat_v > 80.0) or not _on("mcb_pan"):
-		if pan_cmd and not bat_on:
+		if pan_cmd:
 			pan_cmd = false
+			if bat_on and not _on("mcb_pan"):
+				notify("Pantograph control circuit breaker off: the pantograph is lowering.", "warn")
 	aux_comp = pan_cmd and pan_res < 650.0 and mr < 450.0 and bat_v > 80.0
 	if aux_comp:
 		pan_res += 7.0 * dt
@@ -613,7 +659,7 @@ func _forces(dt: float, v: float, vk: float) -> void:
 		f_tr = f_adh * 0.93
 		slip = true
 	traction_force = f_tr * dirn
-	line_i = absf(f_tr * v) / 0.9 / 1500.0
+	line_i = absf(f_tr * v) / 0.9 / 1500.0 + (aux_kw * 1000.0 / 1500.0 if hscb else 0.0)
 	# --- braking: regen first, EP friction makes up the rest
 	var f_req := brake_ramp * m_eff
 	var regen := 0.0
@@ -683,12 +729,58 @@ func _lights() -> void:
 	var last := train.vehicles[train.vehicles.size() - 1]
 	for lamp_m in last.tail_lamps:
 		(lamp_m as StandardMaterial3D).emission_energy_multiplier = 3.0 if bat_v > 80.0 else 0.0
-	# saloon lighting glows through the windows after dark
+	# saloon lighting glows through the windows (faintly by day, warmly after dark)
 	var wm := MU.mat(Color(0.06, 0.08, 0.1), 0.08, 0.5, "nif_win")
-	var lit := siv_on and _on("saloon_lights") and GameSettings.time_of_day != "day"
-	wm.emission_enabled = lit
+	var lit := siv_on and _on("saloon_lights")
+	if not wm.emission_enabled:
+		wm.emission_enabled = true
 	wm.emission = Color(1.0, 0.95, 0.85)
-	wm.emission_energy_multiplier = 0.9 if lit else 0.0
+	wm.emission_energy_multiplier = (0.9 if GameSettings.time_of_day != "day" else 0.12) if lit else 0.0
+
+
+## Saloon air-conditioning, cab demister, windscreen misting, train radio and
+## the resulting load on the auxiliary converter.
+func _comfort(dt: float) -> void:
+	var cars := train.vehicles.size()
+	hvac_on = siv_on and _on("hvac") and _on("mcb_hvac")
+	var sun_load := 2.5 if GameSettings.time_of_day == "day" and weather != "rain" else 0.0
+	var target := 22.5 if hvac_on else ambient_t + sun_load
+	saloon_t = move_toward(saloon_t, target, dt * (0.02 if hvac_on else 0.006))
+	# demister: heated screen and warm air (heat from the aux converter, fan from the battery)
+	demist_on = siv_on and bat_v > 80.0 and _on("demister")
+	var humid := 0.75 if weather == "rain" else (0.4 if GameSettings.time_of_day != "day" else 0.0)
+	var m_target := 0.0 if demist_on else humid
+	mist = move_toward(mist, m_target, dt * (0.07 if demist_on else 0.004))
+	# train radio boots once the cab is active and its breaker is in
+	if cab_active and _on("mcb_radio"):
+		if not radio_ok:
+			if _radio_boot < 0.0:
+				_radio_boot = 6.0
+			_radio_boot -= dt
+			if _radio_boot <= 0.0:
+				radio_ok = true
+	else:
+		if radio_ok and cab_active:
+			notify("Train radio lost (radio circuit breaker off).", "warn")
+		radio_ok = false
+		_radio_boot = -1.0
+	# auxiliary converter load (kW)
+	aux_kw = 0.0
+	if siv_on:
+		aux_kw = 14.0 + cars * 3.0                                  # control, battery charging, ventilation
+		if comp_on:
+			aux_kw += 22.0
+		if hvac_on:
+			aux_kw += cars * (18.0 + clampf(absf(saloon_t - 22.5) * 6.0, 0.0, 14.0) + absf(ambient_t - 22.0) * 0.8)
+		if _on("saloon_lights"):
+			aux_kw += cars * 2.4
+		if demist_on:
+			aux_kw += 4.5
+		if int(_v("headlights")) >= 2:
+			aux_kw += 0.4
+	sound["hvac"] = 1.0 if hvac_on else 0.0
+	sound["demister"] = 1.0 if demist_on else 0.0
+	sound["wiper"] = 1.0 if wipe_rate > 0.0 else 0.0
 
 
 func _sounds(dt: float, vk: float) -> void:

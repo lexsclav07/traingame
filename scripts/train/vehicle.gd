@@ -35,6 +35,8 @@ var smoke_point: Node3D                   # chimney
 var safety_valve_point: Node3D
 var cocks_points: Array = []
 var whistle_point: Node3D
+var overflow_points: Array = []           # steam: injector overflow pipes (live, exhaust)
+var scoop: Node3D                         # tender water scoop (moves down when lowered)
 
 
 func total_mass() -> float:

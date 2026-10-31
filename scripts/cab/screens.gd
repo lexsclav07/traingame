@@ -174,23 +174,27 @@ func _draw_tms() -> void:
 					draw_line(Vector2(x + cw * 0.5 - 14, 48), Vector2(x + cw * 0.5 + 6, 48), pc, 3.0)
 				var bcp: float = sim.bc[i]
 				draw_rect(Rect2(x + 4, 104, (cw - 8) * clampf(bcp / 420.0, 0.0, 1.0), 6), Color(0.95, 0.6, 0.15))
-			var y := 136.0
 			var lines := [
 				["Line voltage", "%d V" % int(sim.line_v), sim.line_v > 1000.0],
 				["Line current", "%d A" % int(sim.line_i), true],
 				["HSCB", "CLOSED" if sim.hscb else "OPEN", sim.hscb],
-				["Aux converter", "ON" if sim.siv_on else "OFF", sim.siv_on],
+				["Aux converter", "ON  %d kW" % int(sim.aux_kw) if sim.siv_on else "OFF", sim.siv_on],
 				["Battery", "%d V" % int(sim.bat_v), sim.bat_v > 100.0],
-				["Main reservoir", "%d kPa%s" % [int(sim.mr), "  (compressor)" if sim.comp_on else ""], sim.mr > 750.0],
-				["Pan reservoir", "%d kPa%s" % [int(sim.pan_res), "  (aux comp)" if sim.aux_comp else ""], sim.pan_res > 450.0],
-				["Parking brake", "APPLIED" if sim.park_applied else "RELEASED", not sim.park_applied],
+				["Main res.", "%d kPa%s" % [int(sim.mr), " COMP" if sim.comp_on else ""], sim.mr > 750.0],
+				["Pan res.", "%d kPa%s" % [int(sim.pan_res), " AUX" if sim.aux_comp else ""], sim.pan_res > 450.0],
+				["Park brake", "APPLIED" if sim.park_applied else "RELEASED", not sim.park_applied],
 				["Brake test", ["NOT DONE", "RUNNING", "PASSED"][sim.brake_test], sim.brake_test == 2],
-				["Doors", "CLOSED & LOCKED" if sim.doors_locked else "OPEN", sim.doors_locked],
+				["Doors", "LOCKED" if sim.doors_locked else "OPEN", sim.doors_locked],
+				["Saloon", "%.1f C  %s" % [sim.saloon_t, "A/C ON" if sim.hvac_on else "A/C OFF"], sim.hvac_on],
+				["Radio", "OK" if sim.radio_ok else ("BOOTING" if sim._radio_boot > 0.0 else "NO SERVICE"), sim.radio_ok],
 			]
-			for ln in lines:
-				_txt(Vector2(14, y), ln[0], 15, Color(0.8, 0.82, 0.86))
-				_txt(Vector2(W * 0.48, y), ln[1], 15, Color(0.4, 1.0, 0.5) if ln[2] else Color(1.0, 0.75, 0.25))
-				y += 21.0
+			for li in range(lines.size()):
+				var ln: Array = lines[li]
+				var col := li / 6
+				var x0 := 10.0 + col * W * 0.5
+				var y := 132.0 + (li % 6) * 23.0
+				_txt(Vector2(x0, y), ln[0], 14, Color(0.8, 0.82, 0.86))
+				_txt(Vector2(x0 + 92.0, y), ln[1], 14, Color(0.4, 1.0, 0.5) if ln[2] else Color(1.0, 0.75, 0.25))
 			if sim.traction_inhibit != "" and sim.cab_active:
 				_txt(Vector2(14, H - 46), "Traction inhibit: " + sim.traction_inhibit, 14, Color(1.0, 0.6, 0.3))
 		1:
@@ -219,13 +223,21 @@ func _draw_tms() -> void:
 				_txt(Vector2(14, y2), "EMERGENCY BRAKE: " + sim.eb_reason, 15, Color(1.0, 0.35, 0.3))
 				y2 += 22.0
 				any = true
-			for id in ["mcb_control", "mcb_tms", "mcb_etcs", "mcb_pan", "mcb_hscb", "mcb_comp", "mcb_doors", "mcb_lights", "mcb_wipers", "mcb_hvac"]:
+			for id in ["mcb_control", "mcb_tms", "mcb_etcs", "mcb_pan", "mcb_hscb", "mcb_comp", "mcb_doors", "mcb_lights", "mcb_wipers", "mcb_hvac", "mcb_radio", "mcb_cctv"]:
 				if sim.cab.val(id) < 0.5:
 					_txt(Vector2(14, y2), "Circuit breaker tripped / off: " + sim.cab.c(id).title, 15, Color(1.0, 0.75, 0.25))
 					y2 += 22.0
 					any = true
 			if sim.slip:
 				_txt(Vector2(14, y2), "Wheel slip (traction)", 15, Color(1.0, 0.75, 0.25))
+				y2 += 22.0
+				any = true
+			if sim.cab_active and not sim.radio_ok and sim._radio_boot <= 0.0:
+				_txt(Vector2(14, y2), "Train radio: no service", 15, Color(1.0, 0.75, 0.25))
+				y2 += 22.0
+				any = true
+			if sim.siv_on and not sim.hvac_on:
+				_txt(Vector2(14, y2), "Saloon air-conditioning off (%.1f C)" % sim.saloon_t, 15, Color(1.0, 0.75, 0.25))
 				y2 += 22.0
 				any = true
 			if not any:

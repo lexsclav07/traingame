@@ -69,6 +69,11 @@ var brake_frac := 0.0
 var inj_live := 0
 var inj_exh := 0
 var inj_live_feed := 0.0
+# water running to waste at each injector overflow (kg/s) and whether steam blows with it
+var overflow := [0.0, 0.0]
+var overflow_steam := [false, false]
+# gauge glass blow-through (s left, left & right glass)
+var gauge_blow := [0.0, 0.0]
 var inj_exh_feed := 0.0
 # misc
 var whistle_on := 0.0
@@ -155,6 +160,7 @@ func _on_button(ctl: CabControl) -> void:
 			light_fire()
 		"gauge_test_l", "gauge_test_r":
 			_warned["gauge_tested"] = true
+			gauge_blow[0 if ctl.id == "gauge_test_l" else 1] = 3.0
 			if true_level < 0.0:
 				notify("Gauge glass blown through: NO WATER showing. Danger!", "fail")
 			else:
@@ -264,6 +270,13 @@ func step(dt: float) -> void:
 	if inj_live == 1 or inj_exh == 1:
 		_warned["inj_tested"] = true
 	tender_water = maxf(0.0, tender_water - (res[4] + res2[4]) * dt)
+	# whatever the tender supplies but the boiler does not take runs out of the overflow
+	overflow[0] = maxf(0.0, res[4] - (res[2] - res[1])) if res[0] != 1 else 0.0
+	overflow[1] = maxf(0.0, res2[4] - (res2[2] - res2[1])) if res2[0] != 1 else 0.0
+	overflow_steam[0] = res[0] == 2
+	overflow_steam[1] = res2[0] == 2
+	for gi in range(2):
+		gauge_blow[gi] = maxf(0.0, gauge_blow[gi] - dt)
 
 	steam_total = cyl_flow + blower + ej_large + ej_small + whistle_flow + heat_flow + sand_flow + cock_flow + safety_flow + leak + inj_steam
 
@@ -591,6 +604,8 @@ func _sounds() -> void:
 	sound["ejector"] = _v("large_ejector") * clampf(p_gauge / WORK_PSI, 0.0, 1.0) + _v("small_ejector") * 0.25
 	sound["whistle"] = whistle_on if p_gauge > 20.0 else 0.0
 	sound["injector"] = (1.0 if inj_live == 1 else (0.6 if inj_live == 2 else 0.0)) + (1.0 if inj_exh == 1 else (0.6 if inj_exh == 2 else 0.0))
+	sound["gauge_blow"] = 1.0 if (gauge_blow[0] > 2.0 or gauge_blow[1] > 2.0) and p_gauge > 10.0 else 0.0
+	sound["overflow"] = clampf((overflow[0] + overflow[1]) * 0.8, 0.0, 1.0)
 	sound["cocks"] = (1.0 if _v("cocks") > 0.5 else 0.0) * clampf(_v("regulator") * 3.0, 0.0, 1.0) * clampf(p_gauge / 100.0, 0.0, 1.0)
 	sound["fire"] = _v("firedoor") * clampf(burn_rate / 0.2, 0.1, 1.0) if lit else 0.0
 	sound["slip"] = slip_speed

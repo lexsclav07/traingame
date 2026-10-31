@@ -21,6 +21,10 @@ for f in sorted(glob.glob(os.path.join(D, "*.import"))):
     want["compress/normal_map"] = "1" if "_normal" in base else "2"
     if "_normal" in base:
         want["compress/high_quality"] = "true"
+    if base.startswith("raindrops"):
+        # data texture (slopes + ids): keep it lossless
+        want["compress/mode"] = "0"
+        want["compress/normal_map"] = "2"
     head, sep, params = s.partition("[params]")
     if not sep:
         continue

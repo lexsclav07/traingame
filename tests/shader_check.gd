@@ -10,7 +10,7 @@ func _initialize() -> void:
 	r.add_child(cam)
 	cam.position = Vector3(0, 0, 4)
 	var i := 0
-	for path in ["res://assets/shaders/foliage.gdshader", "res://assets/shaders/terrain.gdshader", "res://assets/shaders/water.gdshader"]:
+	for path in ["res://assets/shaders/foliage.gdshader", "res://assets/shaders/terrain.gdshader", "res://assets/shaders/water.gdshader", "res://assets/shaders/windscreen.gdshader"]:
 		var mi := MeshInstance3D.new()
 		mi.mesh = QuadMesh.new()
 		var m := ShaderMaterial.new()

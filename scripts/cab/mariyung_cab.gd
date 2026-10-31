@@ -17,6 +17,7 @@ var cctv_cam: Camera3D
 var cctv_vp: SubViewport
 var _cctv_t := 0.0
 var ceiling_lamp: StandardMaterial3D
+var screen_mat: ShaderMaterial
 
 
 func build(cab_root: Node3D) -> void:
@@ -46,7 +47,22 @@ func build(cab_root: Node3D) -> void:
 	MU.box(self, Vector3(2.9, 0.25, 0.12), Vector3(0, 3.92, 1.6), dark)                 # windscreen header
 	MU.box(self, Vector3(2.9, 2.75, 0.05), Vector3(0, FLOOR + 1.375, 2.575), wall)      # rear wall
 	MU.box(self, Vector3(0.75, 2.0, 0.02), Vector3(0.75, FLOOR + 1.0, 2.545), MU.mat(Color(0.7, 0.71, 0.72), 0.5))  # door to saloon
-	MU.box(self, Vector3(2.72, 1.94, 0.006), Vector3(0, 3.12, 1.1), glass, Vector3(29.7, 0, 0))   # windscreen
+	# windscreen: rain, condensation and washer fluid, cleared by the wipers
+	screen_mat = TX.shader_mat("res://assets/shaders/windscreen.gdshader")
+	screen_mat.set_shader_parameter("drops_tex", TX.t("raindrops"))
+	screen_mat.set_shader_parameter("wiper_a", Vector4(0.81, 0.075, 0.95, 1.0))
+	screen_mat.set_shader_parameter("wiper_b", Vector4(1.81, 0.075, 0.95, 1.0))
+	screen_mat.set_shader_parameter("rain", 1.0 if GameSettings.weather == "rain" else 0.0)
+	var wq := QuadMesh.new()
+	wq.size = Vector2(2.72, 1.94)
+	var ws := MeshInstance3D.new()
+	ws.mesh = wq
+	ws.material_override = screen_mat
+	ws.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ws.name = "Windscreen"
+	add_child(ws)
+	ws.position = Vector3(0, 3.12, 1.1)
+	ws.rotation_degrees = Vector3(29.7, 0, 0)
 	# wipers
 	for wx in [-0.55, 0.45]:
 		var pivot := Node3D.new()
@@ -95,10 +111,11 @@ func build(cab_root: Node3D) -> void:
 		["lamp_vig", Color(1.0, 0.8, 0.1), "VIGILANCE"], ["lamp_dsd", Color(1.0, 0.3, 0.1), "SAFETY PEDAL"],
 		["lamp_brakes", Color(1.0, 0.6, 0.1), "BRAKES ON"], ["lamp_wsp", Color(1.0, 0.6, 0.1), "SLIP/SLIDE"],
 		["lamp_comp", Color(0.95, 0.95, 1.0), "COMPRESSOR"], ["lamp_siv", Color(0.95, 0.95, 1.0), "AUX CONV"],
-		["lamp_line", Color(0.95, 0.95, 1.0), "LINE VOLTS"], ["lamp_hold", Color(1.0, 0.6, 0.1), "HOLD BRAKE"]]
+		["lamp_line", Color(0.95, 0.95, 1.0), "LINE VOLTS"], ["lamp_hold", Color(1.0, 0.6, 0.1), "HOLD BRAKE"],
+		["lamp_radio", Color(0.3, 1.0, 0.45), "RADIO"]]
 	for i in range(lamps_def.size()):
 		var ld: Array = lamps_def[i]
-		lamp(ld[0], console, Vector3(-0.83 + i * 0.185, 0.19, 0.004), Vector3.ZERO, ld[1], ld[2], 0.016, true)
+		lamp(ld[0], console, Vector3(-0.92 + i * 0.172, 0.19, 0.004), Vector3.ZERO, ld[1], ld[2], 0.016, true)
 
 	# --------------------------------------------------- left wing (power)
 	var tbc := lever("tbc", "Traction / brake controller", desk, Vector3(-0.72, -0.02, 0.0), Vector3(90, 0, 0), 0.2,
@@ -371,6 +388,7 @@ func update_visuals(sim: MariyungSim, delta: float) -> void:
 	set_lamp("lamp_siv", sim.siv_on)
 	set_lamp("lamp_line", pw and sim.line_v > 1000.0)
 	set_lamp("lamp_hold", sim.holding)
+	set_lamp("lamp_radio", sim.radio_ok)
 	var desk_level := int(val("desk_light"))
 	for id in lamps:
 		var m: StandardMaterial3D = lamps[id]
@@ -379,6 +397,14 @@ func update_visuals(sim: MariyungSim, delta: float) -> void:
 	cab_light.light_energy = 1.2 if (val("cab_light") > 0.5 and pw) else 0.0
 	ceiling_lamp.emission_energy_multiplier = 2.5 if cab_light.light_energy > 0.0 else 0.0
 	desk_light.light_energy = desk_level * 0.15 if sim.cab_active else 0.0
+	# windscreen state for the rain / condensation / washer shader
+	screen_mat.set_shader_parameter("mist", sim.mist)
+	screen_mat.set_shader_parameter("wipe_phase", sim.wiper_phase)
+	screen_mat.set_shader_parameter("wipe_rate", sim.wipe_rate)
+	screen_mat.set_shader_parameter("wipe_idle", sim.wipe_idle)
+	screen_mat.set_shader_parameter("wash_age", sim.wash_age)
+	screen_mat.set_shader_parameter("wash", clampf(1.0 - sim.wash_age / 30.0, 0.0, 1.0))
+	screen_mat.set_shader_parameter("speed", absf(sim.train.speed))
 	# wipers sweep across the glass
 	for i in range(wipers.size()):
 		# parked flat along the bottom of the screen, sweeping up and over when running

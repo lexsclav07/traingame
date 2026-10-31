@@ -471,6 +471,15 @@ static func a4_loco() -> Vehicle:
 	v.rods["coupled_z"] = coupled
 	v.rods["crank_r"] = 0.33
 	v.rods["axle_y"] = 1.016
+	# injector overflow pipes under the cab: live steam injector on the fireman's
+	# (right) side, exhaust injector on the driver's (left) side
+	for sx in [1.0, -1.0]:
+		_c(b, mt["dark"], 0.03, 0.5, Vector3(sx * 1.22, 0.92, 11.6), Vector3.ZERO, 8)
+		_c(b, mt["dark"], 0.03, 0.12, Vector3(sx * 1.22, 0.66, 11.66), Vector3(30, 0, 0), 8)
+		var ov := Node3D.new()
+		m.add_child(ov)
+		ov.position = Vector3(sx * 1.22, 0.6, 11.7)
+		v.overflow_points.append(ov)
 	b.commit(m, "Body")
 	# cab is built by the interactive cab builder
 	var cab := Node3D.new()
@@ -594,6 +603,16 @@ static func a4_tender() -> Vehicle:
 		MU.box(m, Vector3(0.18, 0.22, 0.18), Vector3(sx * 0.9, 1.45, 7.45), tl)
 		v.tail_lamps.append(tl)
 	_b(b, red, Vector3(2.6, 0.35, 0.12), Vector3(0, 1.06, 7.42))
+	# water scoop between the bogies: lowered into the troughs by the fireman
+	var sc := Node3D.new()
+	sc.name = "Scoop"
+	m.add_child(sc)
+	sc.position = Vector3(0, 0.62, 3.8)
+	MU.box(sc, Vector3(0.5, 0.06, 0.7), Vector3(0, 0, 0), mt["dark"], Vector3(-18, 0, 0))
+	MU.box(sc, Vector3(0.06, 0.3, 0.7), Vector3(-0.25, 0.1, 0), mt["dark"], Vector3(-18, 0, 0))
+	MU.box(sc, Vector3(0.06, 0.3, 0.7), Vector3(0.25, 0.1, 0), mt["dark"], Vector3(-18, 0, 0))
+	_b(b, mt["dark"], Vector3(0.56, 0.5, 0.5), Vector3(0, 0.95, 4.1))
+	v.scoop = sc
 	b.commit(m, "Body")
 	v.finish_model()
 	return v
