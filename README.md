@@ -25,7 +25,8 @@ Simulated systems:
 - **Direction controller** with interlocks, **plug doors** (left/right release, close with chimes, traction interlock, wrong-side warning).
 - **Vigilance** (60 s, lamp, buzzer, penalty), **driver's safety pedal**, **emergency stop** mushroom, **EB reset** procedure.
 - **ETCS**: Start of Mission (DATA, START), Staff Responsible until the first balise, then Full Supervision with braking curves, a warning at +2 km/h, service brake intervention at +5 and an emergency trip at +10.
-- **TMS** screen with status, brakes, doors and faults pages and an **automatic brake test**. A live **CCTV** monitor, headlights, marker and tail lights, wipers, washer, cab and desk lights, demister, HVAC, PA chime and a two-tone horn.
+- **TMS** screen with status, brakes, doors and faults pages and an **automatic brake test**. A live **CCTV** monitor, headlights, marker and tail lights, cab and desk lights, PA chime and a two-tone horn.
+- **Wipers** (three speeds, they park at the end of a stroke) that clear the rain from the windscreen, a **washer** that sprays the screen and runs a wash-wipe, a **demister** that clears condensation (it forms in rain and at night), saloon **air-conditioning** (the saloon temperature drifts when it's off) and the **train radio**. Each has its own circuit breaker, and the load shows on the auxiliary converter.
 
 Real figures used: 20.4 m cars, 3.03 m wide, 4.40 m tall, 4-car 199.8 t / 6-car 298 t, 160 km/h design and 130 km/h service speed, 0.84 m/s² acceleration, 1.01 m/s² service and 1.10 m/s² emergency braking.
 
@@ -41,6 +42,7 @@ Simulated systems:
 - **Vacuum brake** with large and small ejectors, a 21 in relief valve, the brake application travelling down the train, per-vehicle reservoir chambers, and cast-iron shoe friction falling off with speed. **Tender hand brake.**
 - **Wheelslip** (adhesion, steam sanders), **cylinder cocks**, condensate in cold cylinders, **priming**, **hydraulic lock** (blown cylinder cover), **dropping the fusible plug**, **blowback**.
 - **Water troughs and scoop** (lower above 30 mph, lift before the end!), chime whistle, carriage steam heat, gauge lamp.
+- What you do shows: water runs from the injector overflows when the water setting is wrong, the gauge glass empties and refills when you blow it through, the scoop drops under the tender and throws spray over the troughs, and coal sits on the shovel when you take a shovelful.
 - **Driver or fireman**: an **AI fireman** (F5) and an **AI driver** (F6, you fire) can cover either job.
 
 Real figures used: 3 cylinders 18½ × 26 in, 6 ft 8 in drivers, 250 psi, giving **35,455 lbf** tractive effort (the sim reproduces this), 41¼ sq ft grate, 5,000 gallon / 8 ton tender, loco 102 tons 19 cwt.
@@ -58,9 +60,13 @@ The physics is tested headlessly (`tests/`), and these checks run on every push:
 | Mariyung service brake | 1.05-1.1 m/s² | 1.01 m/s² |
 | Mariyung acceleration (30% load) | 0.76 m/s² | 0.84 m/s² tare |
 
+### Every control is tested
+`tests/control_effects.gd` operates every lever, switch, button and valve in both cabs, one at a time, and checks that each one changes something in the simulation, the cab or the train (in the situation where it matters, for example EB reset after an emergency brake). `tests/pick_test.gd` checks that every control can be reached and clicked from a cab position. Both run on every push.
+
 ## Graphics
 Everything you see is generated: the models are built in code and the textures come from `tools/gen_textures.py`.
 - **Sky** with drifting clouds lit by the sun, a moon and stars at night, and overcast rain. **AgX** tone mapping.
+- **Rain on the glass**: drops build up on the windscreen and refract the view until the wiper blades sweep them away; condensation mists the screen from the inside.
 - **Terrain** blended from grass, sandstone or clay, leaf litter and gravel textures, with field patterns of pasture, stubble and plough on the ECML. Distant hills run out to the horizon.
 - **Procedural trees** (eucalypts and angophoras in NSW, oak and ash in Lincolnshire) with branches and leaves that sway in the wind, plus shrubs, rocks, hedgerows and dense grass around the camera.
 - **Track** with ballast shoulders, concrete or timber sleepers, rusty rail webs and polished heads, girder bridges.
