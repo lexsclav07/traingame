@@ -129,6 +129,8 @@ func _build(key: Vector2i) -> MultiMeshInstance3D:
 		var sc := rng.randf_range(0.65, 1.35)
 		if d < 3.3:
 			continue                    # ballast
+		if terrain.road_dist(x, z) < 4.2:
+			continue                    # a road crossing the line
 		if d < 7.0 and rng.randf() < 0.75:
 			continue                    # sparse on the cess
 		if fields and d > 22.0 and not _grassy_field(x, z):

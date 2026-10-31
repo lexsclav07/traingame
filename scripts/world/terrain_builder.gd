@@ -68,6 +68,151 @@ func setup(t: Track, r: Dictionary) -> void:
 	_mark_bridges()
 	_stamp_corridor()
 	build_coarse_distance()
+	_plan_crossings()
+
+
+# ------------------------------------------------------- level crossings
+## Country roads cross the line on the level at a few places: straight track,
+## away from stations, bridges and water troughs, where the land is flat
+## enough for a road to meet the rails without big ramps. Everything that
+## places scenery asks road_dist() so trees, fences and grass leave the road
+## clear. Each crossing: {s, o (rail-top centre), r (right), f (forward),
+## hw (road half width), len (road length to the left / right)}.
+var crossings: Array = []
+var build_q := 2
+
+
+func _plan_crossings() -> void:
+	crossings.clear()
+	var want := 2 if theme == "nsw" else 3
+	var cands := []
+	var s := 200.0
+	while s < track.length - 200.0:
+		s += 20.0
+		if not _crossing_site_ok(s):
+			continue
+		var cost := _crossing_cost(s)
+		if cost < 1e8:
+			cands.append([cost, s])
+	cands.sort_custom(func(a, b): return a[0] < b[0])
+	for c in cands:
+		var ok := true
+		for x in crossings:
+			if absf(sdiff(c[1], x["s"])) < 2500.0:
+				ok = false
+		if ok:
+			crossings.append(_make_crossing(c[1]))
+		if crossings.size() >= want:
+			break
+	crossings.sort_custom(func(a, b): return a["s"] < b["s"])
+
+
+## Signed distance from b to a along the loop (shortest way round).
+func sdiff(a: float, b: float) -> float:
+	var d := fposmod(a - b, track.length)
+	return d - track.length if d > track.length * 0.5 else d
+
+
+func _crossing_site_ok(s: float) -> bool:
+	var k := -100.0
+	while k <= 100.0:
+		if absf(track.curv_at(s + k)) > 1e-6 or absf(track.cant_at(s + k)) > 1e-4:
+			return false
+		if is_bridge(s + k * 1.5):
+			return false
+		k += 20.0
+	for p in route.get("platforms", []):
+		if sdiff(s, p[0]) > -350.0 and sdiff(s, p[0] + p[1]) < 350.0:
+			return false
+	for tr in route.get("troughs", []):
+		if sdiff(s, tr[0]) > -350.0 and sdiff(s, tr[0] + tr[1]) < 350.0:
+			return false
+	return true
+
+
+## How far the land beside the line strays from formation level (lower = flatter).
+func _crossing_cost(s: float) -> float:
+	var f := track.flat_frame_at(s)
+	var th := f.origin.y
+	var cost := 0.0
+	for side in [-1.0, 1.0]:
+		for d in [14.0, 20.0, 28.0, 40.0, 60.0, 90.0, 120.0]:
+			var p: Vector3 = f.origin + f.basis.x * side * d
+			var h := height_at(p.x, p.z)
+			if h < water_y + 1.0:
+				return 1e9
+			cost += absf(h - (th - 0.55)) * (2.5 if d < 30.0 else 1.0)
+	return cost
+
+
+func _make_crossing(s: float) -> Dictionary:
+	var f := track.flat_frame_at(s)
+	var lens := []
+	for side in [-1.0, 1.0]:
+		# carry the road on until it would climb a steep bank or reach water
+		var d := 120.0
+		var prev := height_at(f.origin.x + f.basis.x.x * side * d, f.origin.z + f.basis.x.z * side * d)
+		while d < 420.0:
+			var p: Vector3 = f.origin + f.basis.x * side * (d + 10.0)
+			var h := height_at(p.x, p.z)
+			if h < water_y + 1.0 or absf(h - prev) > 1.6:
+				break
+			prev = h
+			d += 10.0
+		lens.append(d)
+	return {"s": s, "o": f.origin, "r": f.basis.x, "f": -f.basis.z,
+		"hw": 3.3 if theme == "nsw" else 2.7, "len": lens}
+
+
+## Distance from (x, z) to the nearest road centre line (INF if there are none).
+func road_dist(x: float, z: float) -> float:
+	var best := INF
+	for c in crossings:
+		var o: Vector3 = c["o"]
+		var dx := x - o.x
+		var dz := z - o.z
+		var r: Vector3 = c["r"]
+		var fw: Vector3 = c["f"]
+		var u := dx * r.x + dz * r.z
+		var v := dx * fw.x + dz * fw.z
+		var lens: Array = c["len"]
+		var uc := clampf(u, -float(lens[0]), float(lens[1]))
+		best = minf(best, Vector2(u - uc, v).length())
+	return best
+
+
+func near_crossing(s: float, margin: float) -> bool:
+	for c in crossings:
+		if absf(sdiff(s, c["s"])) < margin:
+			return true
+	return false
+
+
+## Height of the built terrain mesh at (x, z): the same grid and triangle split
+## as _chunk(), so a road laid on it never sinks into the ground.
+func mesh_height(x: float, z: float) -> float:
+	var ci := clampi(int((x - area.position.x) / CHUNK), 0, chunks_x - 1)
+	var cj := clampi(int((z - area.position.y) / CHUNK), 0, chunks_z - 1)
+	var near := chunk_near[cj * chunks_x + ci] == 1
+	var res := NEAR_RES if near else FAR_RES
+	if build_q == 0 and near:
+		res = 16.0
+	var ox := area.position.x + ci * CHUNK
+	var oz := area.position.y + cj * CHUNK
+	var fx := (x - ox) / res
+	var fz := (z - oz) / res
+	var i := int(floor(fx))
+	var j := int(floor(fz))
+	var tx := fx - i
+	var tz := fz - j
+	var h00 := height_at(ox + i * res, oz + j * res)
+	var h10 := height_at(ox + (i + 1) * res, oz + j * res)
+	var h01 := height_at(ox + i * res, oz + (j + 1) * res)
+	var h11 := height_at(ox + (i + 1) * res, oz + (j + 1) * res)
+	# triangles (a, a+1, a+vn) and (a+1, a+vn+1, a+vn), split on the 10-01 diagonal
+	if tx + tz <= 1.0:
+		return h00 + (h10 - h00) * tx + (h01 - h00) * tz
+	return h11 + (h01 - h11) * (1.0 - tx) + (h10 - h11) * (1.0 - tz)
 
 
 # ---------------------------------------------------------- natural ground
@@ -248,6 +393,7 @@ func color_at(x: float, z: float, h: float, ny: float, d: float) -> Color:
 
 
 func build(parent: Node3D, quality: int) -> void:
+	build_q = quality
 	terrain_material = _terrain_material()
 	var mat := terrain_material
 	var root := Node3D.new()

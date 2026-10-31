@@ -61,7 +61,7 @@ The physics is tested headlessly (`tests/`), and these checks run on every push:
 | Mariyung acceleration (30% load) | 0.76 m/s² | 0.84 m/s² tare |
 
 ### Every control is tested
-`tests/control_effects.gd` operates every lever, switch, button and valve in both cabs, one at a time, and checks that each one changes something in the simulation, the cab or the train (in the situation where it matters, for example EB reset after an emergency brake). `tests/pick_test.gd` checks that every control can be reached and clicked from a cab position. Both run on every push.
+`tests/control_effects.gd` operates every lever, switch, button and valve in both cabs, one at a time, and checks that each one changes something in the simulation, the cab or the train (in the situation where it matters, for example EB reset after an emergency brake). `tests/pick_test.gd` checks that every control can be reached and clicked from a cab position. `tests/crossing_test.gd` runs a train past every level crossing at speeds up to 200 km/h and checks that the road is shut before the train gets there, that no car is on the crossing, and that it opens again afterwards. All of them run on every push.
 
 ## Graphics
 Everything you see is generated: the models are built in code and the textures come from `tools/gen_textures.py`.
@@ -71,7 +71,8 @@ Everything you see is generated: the models are built in code and the textures c
 - **Procedural trees** (eucalypts and angophoras in NSW, oak and ash in Lincolnshire) with branches and leaves that sway in the wind, plus shrubs, rocks, hedgerows and dense grass around the camera.
 - **Track** with ballast shoulders, concrete or timber sleepers, rusty rail webs and polished heads, girder bridges.
 - **Lineside**: overhead line masts with cantilevers and insulators, telegraph poles, colour-light or semaphore signals, boundary fences, a station with a building, canopy, lamps and seats, and houses, farms and water tanks that light up at night.
-- **Trains**: painted, clear-coated bodies with grime, glossy windows, detailed bogies and running gear, Mallard's nameplates and stainless trim, teak coaches with beading and lettering.
+- **Level crossings**: country roads cross both lines. On the NSW line the flashing lights, bells and boom gates are worked by the approaching train (about 25 s warning) and cars queue at the stop line, then drive on once the booms are up. On the 1930s line the crossing keeper swings big white timber gates across the road well before you arrive, and a "W" board 400 m out is your cue to whistle.
+- **Trains**: the D set's brushed stainless steel cars with a glossy black wrap-around windscreen and red doors; Mallard's clear-coated garter blue with its wedge-shaped, ridged nose, nameplates and stainless trim; teak coaches with beading and lettering. Detailed bogies and running gear throughout.
 - **Cabs**: textured panels, moulded seats, crisp dial faces drawn at load time, daylight fill lighting, a glowing textured firebed.
 - **Steam and smoke** that are lit by the sun, billow and drift.
 
@@ -79,8 +80,8 @@ Pick **Low**, **Medium**, **High** or **Ultra** in the menu. Ultra adds SDFGI gl
 
 ## Routes
 Both routes are continuous loops with curves, transition spirals, superelevation (cant), gradients, speed boards and distance posts.
-- **Hawkesbury Loop** (17.7 km): NSW-style electrified line with sandstone cuttings, bridges, gum trees, a 1 in 40 bank, curves down to 300 m radius, and a platform at Wattle Gully.
-- **Stoke Bank Loop** (43.4 km): a 1930s East Coast Main Line-style circuit with telegraph poles, bullhead rail on chairs, jointed track, 11 km of 1 in 200 descent for record attempts, and water troughs.
+- **Hawkesbury Loop** (17.7 km): NSW-style electrified line with sandstone cuttings, bridges, gum trees, a 1 in 40 bank, curves down to 300 m radius, two level crossings with boom gates, and a platform at Wattle Gully.
+- **Stoke Bank Loop** (43.4 km): a 1930s East Coast Main Line-style circuit with telegraph poles, bullhead rail on chairs, jointed track, 11 km of 1 in 200 descent for record attempts, water troughs, and three gated level crossings.
 
 Take a curve too fast and you derail.
 
@@ -139,7 +140,7 @@ Press **F2** in game for a live checklist that ticks itself off.
 scripts/
   core/game_settings.gd   menu settings and key map (autoload)
   track/                  route definitions and the track geometry
-  world/                  terrain, vegetation, track meshes, overhead wiring, scenery, sky, steam effects
+  world/                  terrain, vegetation, track meshes, overhead wiring, scenery, level crossings, sky, steam effects
 assets/
   shaders/                sky, terrain, water and foliage shaders
   textures/               generated textures (see tools/gen_textures.py)
@@ -161,10 +162,13 @@ Run the checks yourself:
 ```
 godot --headless --path . -s res://tests/run_sim_test.gd -- a4
 godot --headless --path . -s res://tests/run_sim_test.gd -- mariyung
+godot --headless --path . -s res://tests/control_effects.gd -- mariyung
+godot --headless --path . -s res://tests/crossing_test.gd -- a4
 ```
 
 ## Realism notes
 - The **A4** is built from published dimensions and performance. The cab layout is a faithful approximation; exact fitting positions vary between photographs and eras.
+- The **Mariyung's** body is modelled as unpainted stainless steel with a black cab front and red doors; treat the exact shapes and colours as an approximation.
 - The **Mariyung's** published performance figures are used directly. Its cab layout, start-up order, ETCS behaviour and TMS pages follow general modern NSW EMU and ETCS practice rather than the exact (unpublished) D set procedures.
 - Both routes are fictional, styled on the Hawkesbury/Central Coast line and the ECML around Stoke Bank.
 

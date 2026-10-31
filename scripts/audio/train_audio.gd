@@ -19,6 +19,7 @@ var _t := 0.0
 var _seed := 12345
 var p := {}                   # smoothed parameters
 var in_cab := true
+var xing_bell := 0.0          # level crossing bells (set by the game from the camera's distance)
 
 
 func setup(s: TrainSim, is_steam: bool) -> void:
@@ -108,6 +109,7 @@ func update_audio(delta: float, _time_scale: float, cab_view: bool) -> void:
 		_smooth("demister", float(s.get("demister", 0.0)), 1.2, delta)
 		_smooth("washer", float(s.get("washer", 0.0)), 20.0, delta)
 		_smooth("wiper", float(s.get("wiper", 0.0)), 8.0, delta)
+	_smooth("bell", xing_bell, 6.0, delta)
 	var frames := pb.get_frames_available()
 	if frames <= 0:
 		return
@@ -145,6 +147,11 @@ func update_audio(delta: float, _time_scale: float, cab_view: bool) -> void:
 			out += _steam_sample(n, v, dt)
 		else:
 			out += _electric_sample(n, v, vk)
+		# level crossing bell: struck twice a second, inharmonic partials
+		var bl: float = p.get("bell", 0.0)
+		if bl > 0.002:
+			var be := exp(-fmod(_t, 0.5) * 8.0)
+			out += (_osc("bell1", 1210.0) * 0.5 + _osc("bell2", 2740.0) * 0.28 + _osc("bell3", 4030.0) * 0.12) * be * bl * (0.22 if in_cab else 0.4)
 		out = clampf(out * vol * 0.45, -1.0, 1.0)
 		buf[i] = Vector2(out, out)
 	pb.push_buffer(buf)

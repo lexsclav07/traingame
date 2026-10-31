@@ -179,7 +179,7 @@ func _overhead(root: Node3D) -> void:
 		var side := -1.0 if k > 0.0001 else 1.0        # masts on the outside of curves
 		if _on_platform(s, 12.0) and side == float(_platform_side(s)):
 			side = -side
-		var f := track.flat_frame_at(s)
+		var f := track.flat_frame_at(_off_road(s, 6.5))
 		var ground := f.origin.y - 0.62
 		var mpos := f.origin + f.basis.x * (3.4 * side)
 		# the assembly's +X points at the track
@@ -300,7 +300,7 @@ func _telegraph(root: Node3D) -> void:
 	var count := int(track.length / spacing)
 	spacing = track.length / count
 	for i in range(count):
-		var s := i * spacing
+		var s := _off_road(i * spacing, 6.0)
 		var f := track.flat_frame_at(s, lat)
 		var ground := terrain.height_at(f.origin.x, f.origin.z)
 		if terrain.is_bridge(s):
@@ -346,7 +346,7 @@ func _speed_boards(root: Node3D) -> void:
 	var back: Material = _m["dark_steel"]
 	var imperial: bool = track.route["units"] == "imperial"
 	for ch in track.limit_changes():
-		var s: float = ch[0]
+		var s: float = _off_road(ch[0], 6.0)
 		var v: float = ch[1]
 		var f := track.flat_frame_at(s, -2.9)
 		var b := Node3D.new()
@@ -377,7 +377,7 @@ func _distance_posts(root: Node3D) -> void:
 		var quarter := 1609.344 / 4.0
 		var q := 0
 		while q * quarter < track.length:
-			var s := q * quarter
+			var s := _off_road(q * quarter, 5.0)
 			var f := track.flat_frame_at(s, -2.6)
 			var p := Node3D.new()
 			node.add_child(p)
@@ -396,7 +396,7 @@ func _distance_posts(root: Node3D) -> void:
 		var start_km: float = track.route.get("km_post_start", 0.0)
 		var k := 0
 		while k * 500.0 < track.length:
-			var s := k * 500.0
+			var s := _off_road(k * 500.0, 5.0)
 			var f := track.flat_frame_at(s, -2.7)
 			var p := Node3D.new()
 			node.add_child(p)
@@ -405,6 +405,15 @@ func _distance_posts(root: Node3D) -> void:
 			MU.box(p, Vector3(0.42, 0.22, 0.04), Vector3(0, 0.7, 0), white)
 			MU.label(p, "%.3f" % (start_km + s / 1000.0), Vector3(0, 0.7, 0.025), 0.0022, black, Vector3.ZERO, 64)
 			k += 1
+
+
+## Moves a lineside position along the line until it is clear of road crossings.
+func _off_road(s: float, margin: float) -> float:
+	for c in terrain.crossings:
+		var d := terrain.sdiff(s, c["s"])
+		if absf(d) < margin:
+			return float(c["s"]) + (margin if d >= 0.0 else -margin)
+	return s
 
 
 # -------------------------------------------------------------- platforms
@@ -841,13 +850,23 @@ func _buildings(root: Node3D, q: int) -> void:
 	var placed := 0
 	var tries := 0
 	var spots := []
+	if not nsw:
+		for c in terrain.crossings:
+			# the crossing keeper lives beside his gates
+			var o: Vector3 = c["o"]
+			var hw: float = c["hw"]
+			var p: Vector3 = o + (c["r"] as Vector3) * -15.0 + (c["f"] as Vector3) * -(hw + 10.0)
+			var hh := terrain.height_at(p.x, p.z)
+			if hh > terrain.water_y + 1.0:
+				_house(b, Transform3D(Basis(Vector3.UP, track.heading_at(c["s"]) + PI * 0.5), Vector3(p.x, hh - 0.05, p.z)), rng, false)
+				spots.append(p)
 	while placed < count and tries < count * 30:
 		tries += 1
 		var s := rng.randf() * track.length
 		var lat := rng.randf_range(32.0, 240.0) * (1.0 if rng.randf() > 0.5 else -1.0)
 		var f := track.flat_frame_at(s, lat)
 		terrain.query(f.origin.x, f.origin.z)
-		if terrain.q_d < 24.0:
+		if terrain.q_d < 24.0 or terrain.road_dist(f.origin.x, f.origin.z) < 20.0:
 			continue
 		var h := terrain.height_at(f.origin.x, f.origin.z)
 		if h < terrain.water_y + 1.5:
@@ -1035,7 +1054,7 @@ func _fences(root: Node3D, q: int) -> void:
 				var f := track.flat_frame_at(s, lat)
 				var ok := not terrain.is_bridge(s) and not _on_platform(s, 25.0)
 				var h := terrain.height_at(f.origin.x, f.origin.z)
-				if h < terrain.water_y + 0.3:
+				if h < terrain.water_y + 0.3 or terrain.road_dist(f.origin.x, f.origin.z) < 4.6:
 					ok = false
 				if ok:
 					var p := Vector3(f.origin.x, h, f.origin.z)
@@ -1085,7 +1104,7 @@ func _cable_troughing(root: Node3D, q: int) -> void:
 		var s := c
 		var e := minf(c + chunk, track.length)
 		while s <= e + 0.01:
-			if terrain.is_bridge(s) or _on_platform(s, 10.0):
+			if terrain.is_bridge(s) or _on_platform(s, 10.0) or terrain.near_crossing(s, 5.0):
 				if frames.size() > 1:
 					_trough_piece(node, mat, profs, lids, frames, dists, vis)
 				frames = []
@@ -1137,7 +1156,7 @@ func _signals(root: Node3D) -> void:
 			var dd := absf(track.wrap_s(s - (sp[0] as float) + track.length * 0.5) - track.length * 0.5)
 			if dd < 500.0:
 				clear = false
-		if clear and not _on_platform(s, 60.0) and not terrain.is_bridge(s):
+		if clear and not _on_platform(s, 60.0) and not terrain.is_bridge(s) and not terrain.near_crossing(s, 150.0):
 			if nsw:
 				spots.append([s, "colour"])
 			else:
@@ -1145,7 +1164,7 @@ func _signals(root: Node3D) -> void:
 				spots.append([s - 1000.0, "distant"])
 		k += 1
 	for sp in spots:
-		var s := track.wrap_s(sp[0])
+		var s := track.wrap_s(_off_road(sp[0], 60.0))
 		if terrain.is_bridge(s):
 			s += 40.0
 		var f := track.flat_frame_at(s, -3.1)

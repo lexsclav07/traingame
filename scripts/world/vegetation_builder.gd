@@ -116,7 +116,7 @@ func _trees(root: Node3D) -> void:
 			x = rng.randf_range(reach.position.x, reach.end.x)
 			z = rng.randf_range(reach.position.y, reach.end.y)
 		terrain.query(x, z)
-		if terrain.q_d < 17.0:
+		if terrain.q_d < 17.0 or terrain.road_dist(x, z) < 9.0:
 			continue
 		if theme == "ecml":
 			# English trees: copses, field corners and hedgerows, not mid-field
@@ -204,7 +204,7 @@ func _shrubs(root: Node3D) -> void:
 		var x := fr.origin.x
 		var z := fr.origin.z
 		terrain.query(x, z)
-		if terrain.q_d < 9.0:
+		if terrain.q_d < 9.0 or terrain.road_dist(x, z) < 6.0:
 			continue
 		var h := terrain.shaped(x, z, terrain.q_d, terrain.q_h, terrain.q_br)
 		if h < terrain.water_y + 0.5:
@@ -244,7 +244,7 @@ func _rocks(root: Node3D) -> void:
 		var x := fr.origin.x
 		var z := fr.origin.z
 		terrain.query(x, z)
-		if terrain.q_d < 11.0:
+		if terrain.q_d < 11.0 or terrain.road_dist(x, z) < 5.0:
 			continue
 		var h := terrain.shaped(x, z, terrain.q_d, terrain.q_h, terrain.q_br)
 		var h2 := terrain.height_at(x + 2.0, z)
@@ -309,7 +309,7 @@ func _hedgerows(root: Node3D) -> void:
 				if absf(fmod(mid, other_spacing)) < 6.0:
 					continue
 				terrain.query(wp.x, wp.y)
-				if terrain.q_d < 26.0 or terrain.coarse_dist(wp.x, wp.y) > band:
+				if terrain.q_d < 26.0 or terrain.coarse_dist(wp.x, wp.y) > band or terrain.road_dist(wp.x, wp.y) < 7.0:
 					continue
 				if rng.randf() < 0.15:
 					continue

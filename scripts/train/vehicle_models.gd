@@ -57,10 +57,11 @@ static func mariyung_car(code: String, cab_front: bool, motor: bool, pan: bool, 
 	v.reversed = reversed
 	var m := v.make_model_root()
 	var b := MeshBatch.new()
-	var white := TX.painted(Color(0.9, 0.905, 0.91), 0.26, 0.1, "paint_wear", 0.6, 0.7, "nif_body")
+	# stainless steel body sides; the cab nose is a painted moulding
+	var white := TX.metal(Color(0.8, 0.81, 0.83), 0.28, true, 1.2, "nif_body_ss")
 	var black := TX.plastic(Color(0.035, 0.035, 0.04), 0.4, 4.0, "nif_black")
 	var win := _glass(Color(0.025, 0.03, 0.035), "nif_win")
-	var orange := TX.painted(Color(0.95, 0.45, 0.08), 0.3, 0.05, "grime", 0.5, 0.6, "nif_orange")
+	var orange := TX.painted(Color(0.88, 0.24, 0.08), 0.3, 0.05, "grime", 0.5, 0.6, "nif_red")
 	var grey := TX.painted(Color(0.16, 0.165, 0.17), 0.65, 0.4, "grime", 0.6, 0.0, "nif_grey")
 	var roof := TX.painted(Color(0.52, 0.54, 0.56), 0.55, 0.35, "grime", 0.3, 0.0, "nif_roof")
 	var frame := MU.mat(Color(0.05, 0.055, 0.06), 0.45, 0.2, "nif_mullion")
@@ -92,8 +93,9 @@ static func mariyung_car(code: String, cab_front: bool, motor: bool, pan: bool, 
 		for wz in ([1.6] if not cab_front else []) + [L - 1.6]:
 			_b(b, win, Vector3(0.01, 0.75, 1.9), Vector3(x, 2.65, wz))
 			_b(b, frame, Vector3(0.006, 0.85, 2.0), Vector3(x * 0.996, 2.65, wz))
-		# roof gutter and cant rail
-		_b(b, roof, Vector3(0.03, 0.08, L - 0.8), Vector3(x * 1.002, 4.05, L * 0.5))
+		# roof gutter and cant rail (from the back of the cab moulding on a driving car)
+		var gz0 := body_start + 0.1 if cab_front else 0.4
+		_b(b, roof, Vector3(0.03, 0.08, L - 0.4 - gz0), Vector3(x * 1.002, 4.05, (gz0 + L - 0.4) * 0.5))
 		# passenger information display beside each vestibule
 		for dz in [4.15, L - 4.15]:
 			for off in [-1.12, 1.12]:
@@ -131,8 +133,9 @@ static func mariyung_car(code: String, cab_front: bool, motor: bool, pan: bool, 
 		_b(b, grey, Vector3(2.3, 0.42, 1.5), Vector3(0, 0.84, ez))
 		_b(b, black, Vector3(2.32, 0.06, 1.52), Vector3(0, 1.06, ez))
 	# ---- roof: air-conditioning units with grilles, roof walk strip
-	_b(b, roof, Vector3(2.3, 0.06, L - 1.0), Vector3(0, 4.39, L * 0.5))
-	for az in [2.8, L - 2.8]:
+	var rz0 := body_start + 0.2 if cab_front else 0.5
+	_b(b, roof, Vector3(2.3, 0.06, L - 0.5 - rz0), Vector3(0, 4.39, (rz0 + L - 0.5) * 0.5))
+	for az in [4.2 if cab_front else 2.8, L - 2.8]:
 		if pan and absf(az - (L - 3.6)) < 2.0:
 			continue
 		_b(b, roof, Vector3(1.9, 0.22, 2.4), Vector3(0, 4.5, az))
@@ -146,6 +149,17 @@ static func mariyung_car(code: String, cab_front: bool, motor: bool, pan: bool, 
 	return v
 
 
+## Where the D set cab shell is glazed (vehicle space, z back from the coupler face).
+static func _nif_glazed(c: Vector3) -> bool:
+	# panoramic windscreen, wrapping round the front corners
+	if c.z < 1.68 and c.y > 2.3 and c.y < 4.02:
+		return true
+	# cab side windows ahead of the cab doors
+	if c.z > 1.8 and c.z < 2.35 and c.y > 2.5 and c.y < 3.6 and absf(c.x) > 1.2:
+		return true
+	return false
+
+
 static func _gangway(b: MeshBatch, black: Material, grey: Material, z: float, dir: float) -> void:
 	# rubber bellows with folds and a steel end frame
 	for k in range(5):
@@ -153,36 +167,59 @@ static func _gangway(b: MeshBatch, black: Material, grey: Material, z: float, di
 	_b(b, grey, Vector3(1.32, 2.44, 0.04), Vector3(0, 2.25, z + dir * 0.13))
 
 
-static func _mariyung_nose(v: Vehicle, m: Node3D, b: MeshBatch, white: Material, black: Material, orange: Material, win: Material) -> void:
+static func _mariyung_nose(v: Vehicle, m: Node3D, b: MeshBatch, _body: Material, black: Material, orange: Material, win: Material) -> void:
 	# stations: [z, bottom, top, half-width, corner radius]
 	var st := [[0.15, 0.62, 2.15, 1.32, 0.35], [0.55, 0.6, 3.0, 1.44, 0.5], [1.15, 0.62, 3.78, 1.5, 0.58],
 		[1.9, 0.75, 4.28, 1.515, 0.58], [2.6, 1.05, 4.4, 1.515, 0.55]]
+	# One shell, finely lofted between the stations: painted (a silver that
+	# matches the stainless sides, clear-coated) except where the panoramic
+	# windscreen and the cab side windows are, which are glossy black glass.
+	# Its faces point outwards, so from the driver's seat the shell is culled
+	# and the interactive cab's own windscreen is what you look through.
+	var nose_paint := TX.painted(Color(0.74, 0.75, 0.77), 0.22, 0.55, "paint_wear", 0.6, 0.8, "nif_nose")
+	var screen_ext := MU.mat(Color(0.012, 0.014, 0.018), 0.04, 0.0, "nif_screen_ext")
 	var rings := []
-	for s in st:
-		rings.append(MU.rounded_ring(s[3], s[1], s[2], s[4], s[0], 6))
-	var nose := MU.loft(rings, white, true, false)
-	nose.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	nose.name = "Nose"
-	m.add_child(nose)
-	# black windscreen mask (outside only; the interactive cab draws the inside)
-	var mask_rings := []
-	for s in [[0.56, 2.25, 3.02, 1.38], [1.2, 2.25, 3.82, 1.44], [1.62, 2.25, 4.1, 1.45]]:
-		var r := PackedVector3Array()
-		r.append(Vector3(-s[3], s[1], s[0]))
-		r.append(Vector3(s[3], s[1], s[0]))
-		r.append(Vector3(s[3], s[2], s[0]))
-		r.append(Vector3(-s[3], s[2], s[0]))
-		mask_rings.append(r)
-	var mask := MU.loft(mask_rings, MU.glass(Color(0.02, 0.03, 0.04, 0.55)), false, false)
-	mask.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mask.position = Vector3(0, 0, -0.03)
-	mask.scale = Vector3(1.012, 1, 1)
-	m.add_child(mask)
-	# destination display behind the top of the windscreen
+	for k in range(st.size() - 1):
+		var a: Array = st[k]
+		var e: Array = st[k + 1]
+		var sub := 12
+		for i in range(sub):
+			var t := float(i) / sub
+			rings.append(MU.rounded_ring(lerpf(a[3], e[3], t), lerpf(a[1], e[1], t), lerpf(a[2], e[2], t), lerpf(a[4], e[4], t), lerpf(a[0], e[0], t), 12))
+	var last: Array = st[st.size() - 1]
+	rings.append(MU.rounded_ring(last[3], last[1], last[2], last[4], last[0], 12))
+	var sp := SurfaceTool.new()
+	sp.begin(Mesh.PRIMITIVE_TRIANGLES)
+	sp.set_smooth_group(0)
+	var sg := SurfaceTool.new()
+	sg.begin(Mesh.PRIMITIVE_TRIANGLES)
+	sg.set_smooth_group(0)
+	for r in range(rings.size() - 1):
+		var ra: PackedVector3Array = rings[r]
+		var rb: PackedVector3Array = rings[r + 1]
+		var n := ra.size()
+		for i in range(n):
+			var j := (i + 1) % n
+			var c := (ra[i] + rb[i] + rb[j] + ra[j]) * 0.25
+			var s2: SurfaceTool = sg if _nif_glazed(c) else sp
+			s2.add_vertex(ra[i]); s2.add_vertex(rb[i]); s2.add_vertex(rb[j])
+			s2.add_vertex(ra[i]); s2.add_vertex(rb[j]); s2.add_vertex(ra[j])
+	sp.set_smooth_group(-1)
+	MU._cap(sp, rings[0], true)
+	for pair in [[sp, nose_paint, "Nose"], [sg, screen_ext, "WindscreenOutside"]]:
+		var stl: SurfaceTool = pair[0]
+		stl.generate_normals()
+		var mi := MeshInstance3D.new()
+		mi.mesh = stl.commit()
+		mi.material_override = pair[1]
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.name = pair[2]
+		m.add_child(mi)
+	# destination display at the top of the windscreen, on the glass
 	var dd := Node3D.new()
 	m.add_child(dd)
-	dd.position = Vector3(0, 3.93, 1.5)
-	dd.rotation_degrees = Vector3(-29.7, 180, 0)
+	dd.position = Vector3(0, 3.695, 1.053)
+	dd.rotation_degrees = Vector3(-37.6, 180, 0)
 	MU.box(dd, Vector3(1.3, 0.2, 0.02), Vector3(0, 0, -0.012), MU.mat(Color(0.01, 0.01, 0.01), 0.6))
 	var dest := MU.label(dd, "CENTRAL", Vector3(0, 0, 0.0), 0.0036, Color(1.0, 0.62, 0.15), Vector3.ZERO, 64)
 	dest.name = "Destination"

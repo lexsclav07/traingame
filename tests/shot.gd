@@ -3,7 +3,8 @@ extends SceneTree
 ## usage: -s res://tests/shot.gd -- <a4|mariyung> <cold|prep|ready> <day|dusk|night> <clear|rain> <quality 0-3> <prefix> <shots>
 ## shots: comma list of  cab:<view>:<yaw>:<pitch>  |  ext:<yaw>:<pitch>:<dist>  |  line  |
 ##        free:<s>:<lateral>:<height>:<yaw deg>:<pitch deg>  |  move:<metres>:<speed>  |
-##        ctl:<id>:<value>  |  sim:<variable>:<value>  |  wait:<frames>  |  run:<seconds>
+##        ctl:<id>:<value>  |  sim:<variable>:<value>  |  wait:<frames>  |  run:<seconds>  |
+##        xing:<crossing>:<metres short of it>:<speed>
 var game: Node
 var shots: Array = []
 var idx := 0
@@ -42,7 +43,7 @@ func _process(_d: float) -> bool:
 	wait += 1
 	if wait >= settle:
 		var spec: String = shots[idx]
-		if not (spec.begins_with("move") or spec.begins_with("ctl") or spec.begins_with("sim") or spec.begins_with("wait") or spec.begins_with("run")):
+		if not (spec.begins_with("move") or spec.begins_with("ctl") or spec.begins_with("sim") or spec.begins_with("wait") or spec.begins_with("run") or spec.begins_with("xing")):
 			root.get_viewport().get_texture().get_image().save_png(_out() + "%s_%02d.png" % [prefix, idx])
 			print("saved %s_%02d (%s)" % [prefix, idx, spec])
 		idx += 1
@@ -93,6 +94,16 @@ func _setup(spec: String) -> void:
 				game.train.physics_step(0.05)
 			game.train.update_visuals()
 			game.cab.call("update_visuals", game.sim, 0.05)
+			game.crossings.settle(game.train)
+			settle = 2
+		"xing":
+			# xing:<index>:<metres short of it>:<speed> puts the train's front there
+			var xs: Array = game.crossings.xings
+			var xi: Dictionary = xs[int(p[1]) % xs.size()]
+			game.train.front_s = float(xi["s"]) - float(p[2])
+			game.train.speed = float(p[3]) if p.size() > 3 else 0.0
+			game.train.update_visuals()
+			game.crossings.settle(game.train)
 			settle = 2
 		"move":
 			# jump the train along the line and give it speed (no rendering needed)
@@ -100,4 +111,5 @@ func _setup(spec: String) -> void:
 			game.train.front_s += secs
 			game.train.speed = float(p[2]) if p.size() > 2 else 0.0
 			game.train.update_visuals()
+			game.crossings.settle(game.train)
 			settle = 2

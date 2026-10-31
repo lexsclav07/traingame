@@ -15,6 +15,7 @@ var rig: CameraRig
 var hud: Hud
 var effects: Effects
 var audio: TrainAudio
+var crossings: LevelCrossings
 var built := false
 var paused := false
 var time_idx := 0
@@ -45,6 +46,8 @@ func _build() -> void:
 	TrackBuilder.new().build(self, track, terrain, q)
 	scenery = SceneryBuilder.new()
 	scenery.build(self, track, terrain, q)
+	crossings = LevelCrossings.new()
+	crossings.build(self, track, terrain, q)
 	_apply_render_quality(q)
 	envb = EnvironmentBuilder.new()
 	envb.build(self, track.route, gs.time_of_day, gs.weather, q)
@@ -60,6 +63,7 @@ func _build() -> void:
 	else:
 		_build_mariyung()
 	train.update_visuals()
+	crossings.settle(train)
 	var daylight: float = {"day": 1.0, "dusk": 0.35, "night": 0.0}.get(gs.time_of_day, 1.0)
 	if gs.weather == "rain":
 		daylight *= 0.55
@@ -179,6 +183,8 @@ func _process(delta: float) -> void:
 	if effects:
 		effects.update(sim as A4Sim, delta)
 	rig.update_camera(delta)
+	crossings.update(sim_dt, train, rig.cam.global_position)
+	audio.xing_bell = crossings.bell
 	audio.update_audio(delta, ts, rig.mode == "cab")
 	# HUD
 	if rig.mode == "cab" and rig.hovered and not rig.looking:

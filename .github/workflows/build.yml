@@ -52,6 +52,11 @@ jobs:
       - name: Every cab control does something (A4)
         run: timeout 900 ./godot --headless --path . -s res://tests/control_effects.gd -- a4 2
 
+      - name: Level crossings close in time and reopen
+        run: |
+          timeout 600 ./godot --headless --path . -s res://tests/crossing_test.gd -- mariyung
+          timeout 600 ./godot --headless --path . -s res://tests/crossing_test.gd -- a4
+
       - name: Export Linux and Windows builds
         run: |
           mkdir -p build/linux build/windows
