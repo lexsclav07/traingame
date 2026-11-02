@@ -226,6 +226,7 @@ func _process(delta: float) -> void:
 		# which locomotive's engine the listener is nearest
 		var anchor = cab.view_anchor.get(rig.view_name(), cab) if rig.mode == "cab" else cab
 		audio.near_unit = 1 if anchor == (cab as C92Cab).cab2 else 0
+	audio.curve = absf(track.curv_at(train.front_s - 20.0))
 	audio.update_audio(delta, ts, rig.mode == "cab")
 	# HUD
 	if rig.mode == "cab" and rig.hovered and not rig.looking:

@@ -34,6 +34,7 @@ var _seed := 12345
 var p := {}                   # smoothed parameters
 var in_cab := true
 var xing_bell := 0.0          # level crossing bells (set by the game from the camera's distance)
+var curve := 0.0              # curvature (1/m) under the train, set by the game: flange squeal
 
 
 ## mode: "electric", "steam" or "diesel"
@@ -147,6 +148,10 @@ func update_audio(delta: float, _time_scale: float, cab_view: bool) -> void:
 		_smooth("washer", float(s.get("washer", 0.0)), 20.0, delta)
 		_smooth("wiper", float(s.get("wiper", 0.0)), 8.0, delta)
 	_smooth("bell", xing_bell, 6.0, delta)
+	# wheel flanges squeal on tight curves at low and moderate speed
+	var sq := clampf((curve - 1.0 / 520.0) / (1.0 / 300.0 - 1.0 / 520.0), 0.0, 1.0) * clampf((spd * 3.6 - 4.0) / 8.0, 0.0, 1.0) * clampf((75.0 - spd * 3.6) / 25.0, 0.0, 1.0)
+	_smooth("flange", sq, 1.5, delta)
+	_smooth("slack", float(s.get("slack", 0.0)), 60.0, delta)
 	var frames := pb.get_frames_available()
 	if frames <= 0:
 		return
@@ -186,6 +191,15 @@ func update_audio(delta: float, _time_scale: float, cab_view: bool) -> void:
 			out += _diesel_sample(n, vk)
 		else:
 			out += _electric_sample(n, v, vk)
+		# flange squeal: a few shrill partials that come and go
+		var fl: float = p.get("flange", 0.0)
+		if fl > 0.01:
+			var wob := 0.5 + 0.5 * sin(_t * 2.3) * sin(_t * 0.7 + 1.0)
+			out += (_osc("fl1", 3150.0 + sin(_t * 3.7) * 160.0) * 0.6 + _osc("fl2", 4720.0 + sin(_t * 2.9) * 90.0) * 0.3) * fl * wob * (0.05 if in_cab else 0.09)
+		# slack running in or out: a heavy clank of couplers down the train
+		var sl: float = p.get("slack", 0.0)
+		if sl > 0.02:
+			out += (_lowpass("sl_lp", n, 0.08) * 2.0 + _osc("sl_o", 70.0) * 0.4 + _osc("sl_o2", 410.0) * 0.08) * sl * 0.35
 		# level crossing bell: struck twice a second, inharmonic partials
 		var bl: float = p.get("bell", 0.0)
 		if bl > 0.002:

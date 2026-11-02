@@ -26,6 +26,7 @@ const PANE_W := 1.23
 const PANE_H := 0.82
 
 var cab2: Node3D                              # the second unit's cab (this node is the first)
+var units: Array[Vehicle] = []
 var roots: Array[Node3D] = []
 var screens: Array[LocoScreen] = []           # unit 1 main, status, unit 2 main, status
 var pane_mats: Array[ShaderMaterial] = []     # windscreen panes: unit 1 left, right, unit 2 left, right
@@ -49,6 +50,7 @@ func build_both(lead: Vehicle, trail: Vehicle) -> void:
 	cab2.name = "C92Cab2"
 	trail.cab_root.add_child(cab2)
 	roots = [self, cab2]
+	units = [lead, trail]
 	var mt := _mats()
 	for u in range(2):
 		var b := MeshBatch.new()
@@ -797,6 +799,10 @@ func update_visuals(sim: C92Sim, delta: float) -> void:
 		var dome_on := lights_ok and val(p + "cab_light") > 0.5
 		dome_lights[u].light_energy = 1.3 if dome_on else 0.0
 		dome_mats[u].emission_energy_multiplier = 2.4 if dome_on else 0.0
+		# seen from outside at night, a lit cab glows through its windows
+		var cg: StandardMaterial3D = units[u].extra.get("cab_glass")
+		if cg:
+			cg.emission_energy_multiplier = 0.45 if dome_on else (0.06 if gauge_on else 0.0)
 		var walk_on := lights_ok and val(p + "walkway_lights") > 0.5
 		for k in range(3):
 			walk_lights[u * 3 + k].light_energy = 1.1 if walk_on else 0.0

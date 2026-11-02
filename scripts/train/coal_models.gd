@@ -77,6 +77,14 @@ static func c44aci(number: String) -> Vehicle:
 	v.brake_mass_ratio = 0.3
 	var m := v.make_model_root()
 	var mt := mats()
+	# each unit's cab glass is its own material, so a lit cab glows through its
+	# windows at night (the outer glass is otherwise dark and glossy)
+	var cg := MU.lamp(Color(1.0, 0.9, 0.72), 0.0)
+	cg.albedo_color = Color(0.02, 0.025, 0.03)
+	cg.roughness = 0.05
+	cg.metallic_specular = 0.9
+	mt["glass"] = cg
+	v.extra["cab_glass"] = cg
 	var b := MeshBatch.new()
 	var blue: Material = mt["blue"]
 	var yellow: Material = mt["yellow"]
@@ -269,6 +277,15 @@ static func _nose_and_cab(b: MeshBatch, m: Node3D, v: Vehicle, mt: Dictionary, n
 		MU.box(m, Vector3(0.07, 0.07, 0.02), Vector3(sx * 0.87, 2.45, NOSE_Z - 0.04), marker)
 		MU.box(m, Vector3(0.07, 0.07, 0.02), Vector3(sx * 0.97, 2.45, NOSE_Z - 0.04), tail)
 	v.head_lamps.append(head)
+	# illuminated number boards at the top corners of the cab front
+	var nb := MU.lamp(Color(1.0, 0.97, 0.9), 0.0)
+	nb.albedo_color = Color(0.85, 0.85, 0.82)
+	for sx in [-1.0, 1.0]:
+		_b(b, black, Vector3(0.42, 0.17, 0.06), Vector3(sx * 1.02, 3.92, z0 - 0.02))
+		MU.box(m, Vector3(0.38, 0.13, 0.01), Vector3(sx * 1.02, 3.92, z0 - 0.055), nb)
+		var nl2 := MU.label(m, number, Vector3(sx * 1.02, 3.92, z0 - 0.062), 0.0011, Color(0.03, 0.03, 0.03), Vector3(0, 180, 0), 96)
+		nl2.double_sided = false
+	v.extra["number_boards"] = nb
 	v.marker_lamps.append(marker)
 	v.tail_lamps.append(tail)
 	v.extra["ditch_lamps"] = [ditch]

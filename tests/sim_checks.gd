@@ -402,6 +402,7 @@ func _c92_tests() -> void:
 			S["mi"] = mi + 1
 		return S["mi"] >= marks.size())
 	check(kmh() >= 59.0, "the 2,680 t train reaches 60 km/h on the level")
+	print("   hardest slack hit pulling away: %.2f m/s" % cs.max_slack_hit)
 	# 3. stowing the MU jumper: the second unit stops loading
 	cab.c("mu_jumper").set_value(0)
 	run(4.0, 0.05, func():
@@ -434,6 +435,8 @@ func _c92_tests() -> void:
 		return absf(train.speed) < 0.01)
 	print("5. full service from %d km/h: rear wagon braking after %.1f s; stopped in %.0f m, %.0f s (wagon BC %d kPa)" % [int(v0), S["rear"], train.odometer - d0, t - t0, int(cs.bc[cs.n - 1])])
 	check(S["rear"] > 1.0 and S["rear"] < 15.0 and absf(train.speed) < 0.01, "the brakes reach the rear in seconds, not instantly, and stop the train")
+	print("   hardest slack hit through all of that: %.2f m/s (bump above 0.35, heavy above 1.0, parts above 2.0)" % cs.max_slack_hit)
+	check(cs.max_slack_hit > 0.2 and cs.max_slack_hit < 1.0 and not cs.parted, "slack runs in and out when power and brakes change, gently with normal handling")
 	# 6. the 1 in 40 bank with 20 loaded wagons: start on it and climb
 	var bank_s := _find_section(0.022, 0.03, 600.0)
 	_make_c92(GameSettings.StartState.READY, 20, true, bank_s)

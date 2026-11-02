@@ -16,6 +16,7 @@ var player_role := "driver"   # A4: "driver" or "fireman"
 var weather := "clear"
 var route_units := "metric"
 var sound := {}               # values read by the audio engine
+var jolt := 0.0               # longitudinal shock felt in the cab (slack action), read by the camera
 
 
 func setup(_t: Train, _c: Cab, _start_state: int) -> void:

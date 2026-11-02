@@ -142,7 +142,12 @@ func _build(key: Vector2i) -> MultiMeshInstance3D:
 		var hz := terrain.shaped(x, z + 0.8, d, terrain.q_h, terrain.q_br)
 		if absf(hx - h) > 0.7 or absf(hz - h) > 0.7:
 			continue                    # rock faces
-		mm.set_instance_transform(used, Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(sc, sc * rng.randf_range(0.8, 1.3), sc)), Vector3(x, h - 0.05, z)))
+		# sit on the terrain as it is actually meshed (the analytic shape differs
+		# from the triangles on cutting edges and embankment shoulders)
+		var hm := terrain.mesh_height(x, z)
+		if absf(hm - h) > 0.6:
+			continue                    # steep break in the ground: no clump here
+		mm.set_instance_transform(used, Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(sc, sc * rng.randf_range(0.8, 1.3), sc)), Vector3(x, hm - 0.05, z)))
 		used += 1
 	mm.visible_instance_count = used
 	return mmi

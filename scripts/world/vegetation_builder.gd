@@ -134,7 +134,7 @@ func _trees(root: Node3D) -> void:
 		var sp := _pick_species()
 		var v := rng.randi_range(0, variants - 1)
 		var sc := rng.randf_range(0.75, 1.3)
-		var xf := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * sc), Vector3(x, h - 0.15, z))
+		var xf := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * sc), Vector3(x, minf(h, terrain.mesh_height(x, z)) - 0.15, z))
 		var key := "%d,%d|%s|%d" % [int(floor(x / CELL)), int(floor(z / CELL)), sp, v]
 		if not buckets.has(key):
 			buckets[key] = []
@@ -214,7 +214,7 @@ func _shrubs(root: Node3D) -> void:
 		if not buckets.has(key):
 			buckets[key] = []
 		var sc := rng.randf_range(0.6, 1.4)
-		buckets[key].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(sc, sc * rng.randf_range(0.8, 1.2), sc)), Vector3(x, h - 0.1, z)))
+		buckets[key].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(sc, sc * rng.randf_range(0.8, 1.2), sc)), Vector3(x, minf(h, terrain.mesh_height(x, z)) - 0.1, z)))
 		placed += 1
 	for key in buckets:
 		var v := int(key.split("|")[1])
@@ -261,7 +261,7 @@ func _rocks(root: Node3D) -> void:
 			buckets[key] = []
 		var sc := rng.randf_range(0.5, 2.6)
 		var b := Basis(Vector3.UP, rng.randf() * TAU) * Basis(Vector3.RIGHT, rng.randf_range(-0.2, 0.2))
-		buckets[key].append(Transform3D(b.scaled(Vector3.ONE * sc), Vector3(x, h - sc * 0.35, z)))
+		buckets[key].append(Transform3D(b.scaled(Vector3.ONE * sc), Vector3(x, minf(h, terrain.mesh_height(x, z)) - sc * 0.35, z)))
 		placed += 1
 	for key in buckets:
 		var v := int(key.split("|")[1])

@@ -114,6 +114,15 @@ var screen_page: Array[int] = [0, 0]            # status display: 0 engine, 1 ai
 var alarms: Array[String] = []
 var _said := {}
 var _warned_hb := false
+# slack action: the free play in every knuckle coupler and draft gear lets the
+# locomotives and the wagons move relative to each other; when the slack runs
+# in or out the wagons arrive with a bang
+const SLACK_PER_COUPLER := 0.025     # m
+var slack_x := 0.0                   # m: + stretched, - bunched
+var slack_w := 0.0                   # m/s: closing speed
+var last_slack_hit := 0.0            # m/s of the last run-in / run-out
+var max_slack_hit := 0.0
+var parted := false
 
 
 func max_speed_kmh() -> float:
@@ -818,12 +827,14 @@ func _traction(dt: float) -> void:
 		var veh2 := train.vehicles[u]
 		f += LOCO_BRAKE_F * loco_bc[u] / LOCO_BC_MAX
 		f += _u(u, "handbrake") * 0.1 * veh2.total_mass() * 9.81
+	var f_loco := f
 	var mu_b := adhesion_mu(true) + 0.1
 	for i in range(2, n):
 		var fw: float = f_ref[i] * clampf(bc[i] / 360.0, 0.0, 1.3)
 		var cap_f := mu_b * train.vehicles[i].total_mass() * 9.81
 		f += minf(fw, cap_f)
 	brake_force = f
+	_slack(dt, f_loco, f - f_loco)
 	# a moving train with a handbrake on: smoking brake blocks
 	var hb := _u(0, "handbrake") > 0.3 or _u(1, "handbrake") > 0.3
 	if hb and vk > 3.0 and not _warned_hb:
@@ -831,6 +842,59 @@ func _traction(dt: float) -> void:
 		notify("A locomotive handbrake is still on - the wheels are dragging! Release it at the No. 2 end.", "warn")
 	elif not hb:
 		_warned_hb = false
+
+
+## Slack between the locomotives and the train. The two groups accelerate
+## differently whenever their forces don't match their masses (power or the
+## dynamic brake on the locomotives, the train brakes on the wagons); the slack
+## then runs out or in, and the impact speed is how hard the train is handled.
+func _slack(dt: float, f_loco_brake: float, f_wagon_brake: float) -> void:
+	if n < 3:
+		return
+	var m_l := train.vehicles[0].total_mass() + train.vehicles[1].total_mass()
+	var m_w := train.total_mass() - m_l
+	var dirv := signf(train.speed) if absf(train.speed) > 0.05 else signf(traction_force)
+	var half := SLACK_PER_COUPLER * (n - 2) * 0.5
+	if dirv == 0.0:
+		slack_w = 0.0
+		return
+	var fl := traction_force * dirv - f_loco_brake
+	var fw := -f_wagon_brake
+	if absf(train.speed) <= 0.05:
+		# at a stand the locomotives can only take up the slack against their
+		# own brakes, the wagons stay put
+		fl = maxf(fl, 0.0)
+		fw = 0.0
+	var a_rel := fl / m_l - fw / m_w
+	slack_w += a_rel * dt
+	slack_w *= exp(-dt * 0.6)            # draft gear damping
+	slack_x += slack_w * dt
+	if absf(slack_x) >= half:
+		var hit := absf(slack_w) if signf(slack_w) == signf(slack_x) else 0.0
+		slack_x = clampf(slack_x, -half, half)
+		if hit > 0.0:
+			slack_w = 0.0
+			_slack_hit(hit, slack_x > 0.0)
+
+
+func _slack_hit(w: float, run_out: bool) -> void:
+	last_slack_hit = w
+	max_slack_hit = maxf(max_slack_hit, w)
+	if w < 0.35:
+		return
+	jolt = maxf(jolt, clampf(w * 0.8, 0.0, 2.0))
+	sound["slack"] = clampf(w, 0.0, 2.0)
+	var what := "run-out" if run_out else "run-in"
+	if w > 2.0 and not parted:
+		parted = true
+		_open_pcs("train parted")
+		for i in range(2, n):
+			emerg_vent[i] = G_EMERG
+		failed = true
+		fail_reason = "The train parted: a coupler knuckle broke in a slack %s at %.1f m/s. Open the throttle and apply the dynamic brake a notch at a time, and let the slack adjust before adding more." % [what, w]
+		notify(fail_reason, "fail")
+	elif w > 1.0:
+		notify("Heavy slack %s (%.1f m/s) - the whole train felt that. Ease the power or dynamic brake on more gradually." % [what, w], "warn")
 
 
 func adhesion_mu(braking := false) -> float:
@@ -870,6 +934,9 @@ func _lights(dt: float) -> void:
 			(dls[k] as SpotLight3D).light_energy = 2.0 if lit else 0.0
 		for m in dl:
 			(m as StandardMaterial3D).emission_energy_multiplier = 3.0 if d_on and (not flash or phase) else 0.0
+		var nbm: StandardMaterial3D = veh.extra.get("number_boards")
+		if nbm:
+			nbm.emission_energy_multiplier = 1.6 if lights_ok and (hl > 0 or _uon(u, "markers")) else 0.0
 		var mk := lights_ok and _uon(u, "markers")
 		for m in veh.marker_lamps:
 			(m as StandardMaterial3D).emission_energy_multiplier = 2.5 if mk else 0.0
@@ -966,6 +1033,7 @@ func _sounds() -> void:
 		sound["fan%d" % u] = fan[u]
 		sound["cabac%d" % u] = 1.0 if _powered(u) and _uon(u, "cb_cabair") else 0.0
 	sound["horn"] = horn
+	sound["slack"] = maxf(0.0, float(sound.get("slack", 0.0)) - 0.15)
 	sound["sand"] = 1.0 if ctrl >= 0 and _uon(ctrl, "sand") and mr[ctrl] > 300.0 else 0.0
 	sound["alerter"] = 1.0 if alerter_warn else 0.0
 	sound["speed"] = absf(train.speed)

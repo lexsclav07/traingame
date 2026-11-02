@@ -134,6 +134,12 @@ func update_camera(delta: float) -> void:
 			var tt := Time.get_ticks_msec() * 0.001
 			var shake := Vector3(sin(tt * 7.3) * 0.6 + sin(tt * 13.1) * 0.4, sin(tt * 9.7) * 0.5 + sin(tt * 17.3) * 0.5, 0) * 0.0018 * clampf(spd / 30.0, 0.0, 1.5)
 			t.origin += t.basis * shake
+			# slack running in or out: a lurch along the train that dies away
+			var sim := train.sim
+			if sim and sim.jolt > 0.001:
+				var anchor_basis := anchor.global_transform.basis
+				t.origin += anchor_basis.z * sin(tt * 38.0) * sim.jolt * 0.035
+				sim.jolt = move_toward(sim.jolt, 0.0, delta * 2.5)
 			cam.global_transform = t
 		"external":
 			var lead := train.vehicles[0]
