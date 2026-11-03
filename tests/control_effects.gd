@@ -38,6 +38,8 @@ func _initialize() -> void:
 
 func _new_game() -> void:
 	var gs = root.get_node("GameSettings")
+	gs.c92_units = 2
+	gs.tutorial = false
 	gs.train = {"mariyung": 0, "a4": 1, "c92": 2}[train_name]
 	gs.coal_wagons = 6
 	gs.coal_loaded = true

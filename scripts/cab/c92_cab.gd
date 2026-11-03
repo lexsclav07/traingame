@@ -43,16 +43,21 @@ var _wiper_prev := [0.0, 0.0]
 var _wiper_idle := [1e4, 1e4]
 
 
+## Builds the cab of the lead unit and, if there is one, the second unit's
+## (trail = null for a single locomotive).
 func build_both(lead: Vehicle, trail: Vehicle) -> void:
 	name = "C92Cab"
 	lead.cab_root.add_child(self)
-	cab2 = Node3D.new()
-	cab2.name = "C92Cab2"
-	trail.cab_root.add_child(cab2)
-	roots = [self, cab2]
-	units = [lead, trail]
+	roots = [self]
+	units = [lead]
+	if trail:
+		cab2 = Node3D.new()
+		cab2.name = "C92Cab2"
+		trail.cab_root.add_child(cab2)
+		roots.append(cab2)
+		units.append(trail)
 	var mt := _mats()
-	for u in range(2):
+	for u in range(units.size()):
 		var b := MeshBatch.new()
 		_shell(roots[u], b, mt, u)
 		_driver_desk(roots[u], b, mt, PFX[u], u)
@@ -63,7 +68,8 @@ func build_both(lead: Vehicle, trail: Vehicle) -> void:
 		_brake_cabinet(roots[u], b, mt, PFX[u])
 		_outside(roots[u], b, mt, PFX[u], u)
 		b.commit(roots[u], "CabInterior")
-	_coupling(self, cab2, mt)
+	if trail:
+		_coupling(self, cab2, mt)
 	_views()
 
 
@@ -276,15 +282,17 @@ func _driver_desk(root: Node3D, b: MeshBatch, mt: Dictionary, p: String, u: int)
 	_fbx(b, desk, dt, Vector3(1.365, 0.5, 0.04), Vector3(0, 0, -0.02))
 	var ip := frame(root, Vector3(-0.712, 2.745, 2.395), Vector3(-22, 0, 0))
 	_fbx(b, dark, ip, Vector3(1.365, 0.32, 0.03), Vector3(0, 0, -0.015))
-	# brake handle quadrants
-	_fbx(b, mt["black"], dt, Vector3(0.06, 0.24, 0.012), Vector3(-0.53, 0.06, 0.006))
-	_fbx(b, mt["black"], dt, Vector3(0.05, 0.2, 0.012), Vector3(-0.37, 0.02, 0.006))
-	_fbx(b, mt["black"], dt, Vector3(0.36, 0.22, 0.012), Vector3(0.45, 0.03, 0.006))
+	# brake handle quadrants: the handles pivot below the desk top and move along
+	# a slot, with each position engraved beside it
+	var quad := MU.mat(Color(0.13, 0.135, 0.14), 0.45, 0.4, "c92_quadrant")
+	_fbx(b, quad, dt, Vector3(0.13, 0.24, 0.012), Vector3(-0.555, 0.06, 0.006))
+	_fbx(b, quad, dt, Vector3(0.11, 0.2, 0.012), Vector3(-0.38, 0.02, 0.006))
+	_fbx(b, quad, dt, Vector3(0.43, 0.22, 0.012), Vector3(0.455, 0.03, 0.006))
 
 	# ------------------------------------------------------ brake handles
-	var ab := lever(p + "auto_brake", "Automatic brake", dt, Vector3(-0.53, 0.06, 0.012), Vector3(90, 0, 0), 0.16,
-		Vector3(-38, 0, 0), Vector3(76, 0, 0), steel, black,
-		"Train brake (brake pipe). RELEASE fully forward; pull back through MINIMUM and the service zone to FULL SERVICE. SUPPRESSION resets a penalty (PCS). Fully back = EMERGENCY. Keys ; and '.", 0.024)
+	var ab := _slot_lever(p + "auto_brake", "Automatic brake", dt, b, mt, Vector2(-0.53, 0.06), 0.16, -38.0, 76.0, 0.096, steel, black,
+		"Train brake (brake pipe). RELEASE fully forward; pull back through MINIMUM and the service zone to FULL SERVICE. SUPPRESSION resets a penalty (PCS). Fully back = EMERGENCY. Keys ; and '.", 0.024,
+		[[0.0, "RELEASE"], [1.0, "MIN"], [5.0, "FULL"], [6.0, "SUPPR"], [8.0, "EMERG"]], 8.0, false)
 	ab.min_v = 0.0
 	ab.max_v = 8.0
 	ab.drag_scale = 0.003
@@ -300,18 +308,15 @@ func _driver_desk(root: Node3D, b: MeshBatch, mt: Dictionary, p: String, u: int)
 		if ab.value < 1.0:
 			return "RELEASE"
 		return "SERVICE (%d kPa)" % int(50.0 + (ab.value - 1.0) / 4.0 * 100.0)
-	for nt in [[0.0, "REL"], [1.0, "MIN"], [5.0, "FULL"], [6.0, "SUPP"], [8.0, "EMERG"]]:
-		var a := deg_to_rad(-38.0 + 76.0 * float(nt[0]) / 8.0)
-		text(nt[1], dt, Vector3(-0.6, 0.06 - sin(a) * 0.15, 0.013), Vector3.ZERO, 0.00036)
-	var ib := lever(p + "ind_brake", "Independent brake", dt, Vector3(-0.37, 0.02, 0.012), Vector3(90, 0, 0), 0.13,
-		Vector3(-32, 0, 0), Vector3(64, 0, 0), steel, black,
-		"Locomotive brakes only (both units, through the MU pipes). Forward = RELEASE, back = FULL (450 kPa). Keys [ and ].", 0.02)
+	var ib := _slot_lever(p + "ind_brake", "Independent brake", dt, b, mt, Vector2(-0.37, 0.02), 0.13, -32.0, 64.0, 0.096, steel, black,
+		"Locomotive brakes only (both units, through the MU pipes). Forward = RELEASE, back = FULL (450 kPa). Keys [ and ].", 0.02,
+		[[0.0, "REL"], [1.0, "FULL"]], 1.0, true)
 	ib.min_v = 0.0
 	ib.max_v = 1.0
 	ib.notches = [[0.0, "RELEASE"], [1.0, "FULL"]]
 	ib.setup_part(ib.part)
-	text("IND", dt, Vector3(-0.37, 0.15, 0.013), Vector3.ZERO, 0.0004)
-	text("AUTO", dt, Vector3(-0.53, 0.2, 0.013), Vector3.ZERO, 0.0004)
+	text("INDEPENDENT", dt, Vector3(-0.38, 0.135, 0.013), Vector3.ZERO, 0.00034)
+	text("AUTOMATIC", dt, Vector3(-0.555, 0.195, 0.013), Vector3.ZERO, 0.00034)
 	button(p + "bail_off", "Bail off", dt, Vector3(-0.37, -0.15, 0.0), Vector3.ZERO, Color(0.82, 0.82, 0.8),
 		"Hold to release the automatic brake on the locomotives only, leaving the wagons braked (stops the units sliding their wheels). Key B (hold).", 0.015, false, false, "BAIL OFF")
 	button(p + "horn", "Horn", dt, Vector3(-0.2, -0.16, 0.0), Vector3.ZERO, Color(0.22, 0.22, 0.24),
@@ -321,9 +326,9 @@ func _driver_desk(root: Node3D, b: MeshBatch, mt: Dictionary, p: String, u: int)
 		"Hold to sand the rails under the leading wheels of both units: more grip when starting or on wet rail. Key X.", 0.016, false, false, "SAND")
 	button(p + "alerter", "Alerter reset", dt, Vector3(0.15, -0.15, 0.0), Vector3.ZERO, Color(1.0, 0.8, 0.1),
 		"Vigilance: when the alerter sounds (60 s without using a control while moving) press within 10 s, or a penalty brake application opens the PCS. Key Q.", 0.026, false, true, "ALERTER")
-	var th := lever(p + "throttle", "Throttle", dt, Vector3(0.32, 0.02, 0.012), Vector3(90, 0, 0), 0.15,
-		Vector3(28, 0, 0), Vector3(-56, 0, 0), steel, black,
-		"Power: IDLE, then notches 1-8 (push away from you). Each notch raises engine speed and load in every unit that answers this cab. Interlocked with the dynamic brake. Keys D / A.", 0.026)
+	var th := _slot_lever(p + "throttle", "Throttle", dt, b, mt, Vector2(0.32, 0.02), 0.15, 28.0, -56.0, 0.113, steel, black,
+		"Power: IDLE, then notches 1-8 (push away from you). Each notch raises engine speed and load in every unit that answers this cab. Interlocked with the dynamic brake. Keys D / A.", 0.026,
+		[[0.0, "IDLE"], [2.0, "2"], [4.0, "4"], [6.0, "6"], [8.0, "8"]], 8.0, false)
 	th.min_v = 0.0
 	th.max_v = 8.0
 	th.notch_only = true
@@ -332,12 +337,9 @@ func _driver_desk(root: Node3D, b: MeshBatch, mt: Dictionary, p: String, u: int)
 	for k in range(1, 9):
 		th.notches.append([float(k), "NOTCH %d" % k])
 	th.setup_part(th.part)
-	for k in [0, 4, 8]:
-		var a := deg_to_rad(28.0 - 56.0 * k / 8.0)
-		text("IDLE" if k == 0 else str(k), dt, Vector3(0.39, 0.02 - sin(a) * 0.14, 0.013), Vector3.ZERO, 0.0004)
-	var dbl := lever(p + "dynbrake", "Dynamic brake", dt, Vector3(0.46, 0.02, 0.012), Vector3(90, 0, 0), 0.15,
-		Vector3(-28, 0, 0), Vector3(56, 0, 0), steel, MU.mat(Color(0.55, 0.07, 0.04), 0.45, 0.0, "c92_db_knob"),
-		"Dynamic brake: OFF, SET UP (grid blowers running, no retarding force), then pull back for more braking: the traction motors become generators feeding the roof grids. Throttle must be at IDLE. Keys A / D.", 0.024)
+	var dbl := _slot_lever(p + "dynbrake", "Dynamic brake", dt, b, mt, Vector2(0.46, 0.02), 0.15, -28.0, 56.0, 0.113, steel, MU.mat(Color(0.55, 0.07, 0.04), 0.45, 0.0, "c92_db_knob"),
+		"Dynamic brake: OFF, SET UP (grid blowers running, no retarding force), then pull back for more braking: the traction motors become generators feeding the roof grids. Throttle must be at IDLE. Keys A / D.", 0.024,
+		[[0.0, "OFF"], [1.0, "SET UP"], [5.0, "50%"], [9.0, "MAX"]], 9.0, true)
 	dbl.min_v = 0.0
 	dbl.max_v = 9.0
 	dbl.notches = [[0.0, "OFF"], [1.0, "SET UP"], [9.0, "MAX"]]
@@ -351,17 +353,16 @@ func _driver_desk(root: Node3D, b: MeshBatch, mt: Dictionary, p: String, u: int)
 		if dbl.value < 1.05:
 			return "SET UP"
 		return "BRAKING %d %%" % int((dbl.value - 1.0) / 8.0 * 100.0)
-	text("DB", dt, Vector3(0.46, 0.15, 0.013), Vector3.ZERO, 0.0004)
-	var rv := lever(p + "reverser", "Reverser", dt, Vector3(0.6, 0.04, 0.012), Vector3(90, 0, 0), 0.1,
-		Vector3(30, 0, 0), Vector3(-60, 0, 0), steel, MU.mat(Color(0.75, 0.75, 0.78), 0.3, 0.8, "c92_rev_knob"),
-		"FORWARD (away from you), CENTRE or REVERSE. Leave it in CENTRE in a trailing unit. Only move it at a stand. Keys W / S.", 0.018)
+	var rv := _slot_lever(p + "reverser", "Reverser", dt, b, mt, Vector2(0.6, 0.04), 0.1, 30.0, -60.0, 0.078, steel, MU.mat(Color(0.75, 0.75, 0.78), 0.3, 0.8, "c92_rev_knob"),
+		"FORWARD (away from you), CENTRE or REVERSE. Leave it in CENTRE in a trailing unit. Only move it at a stand. Keys W / S.", 0.018,
+		[[0.0, "REV"], [1.0, "CTR"], [2.0, "FWD"]], 2.0, true)
 	rv.min_v = 0.0
 	rv.max_v = 2.0
 	rv.notch_only = true
 	rv.notches = [[0.0, "REVERSE"], [1.0, "CENTRE"], [2.0, "FORWARD"]]
 	rv.setup_part(rv.part)
-	text("F", dt, Vector3(0.6, 0.13, 0.013), Vector3.ZERO, 0.0005)
-	text("R", dt, Vector3(0.6, -0.05, 0.013), Vector3.ZERO, 0.0005)
+	for t0 in [["THROTTLE", 0.32], ["DYN BRAKE", 0.46], ["REVERSER", 0.6]]:
+		text(t0[0], dt, Vector3(t0[1], 0.125, 0.013), Vector3.ZERO, 0.00034)
 	# ------------------------------------- overhead console: lights, wipers
 	var ov := frame(root, Vector3(-0.72, 3.9, 2.25), Vector3(33.5, 0, 0))
 	_fbx(b, dark, ov, Vector3(0.92, 0.2, 0.04), Vector3(0, 0, -0.02))
@@ -403,15 +404,15 @@ func _driver_desk(root: Node3D, b: MeshBatch, mt: Dictionary, p: String, u: int)
 		"Lets the throttle raise engine speed in every unit that answers this cab.")
 	toggle(p + "sw_gen_field", "GENERATOR FIELD switch", ip, Vector3(0.53, -0.12, 0.0), Vector3.ZERO, ["OFF", "ON"], 0,
 		"Excites the main alternators, so the units load when the throttle is opened.")
-	for t2 in [["CONTROL", 0.33], ["ENG RUN", 0.43], ["GEN FIELD", 0.53]]:
-		text(t2[0], ip, Vector3(t2[1] + 0.035, -0.12, 0.002), Vector3(0, 0, 90), 0.0003)
+	for t2 in [["CONTROL", 0.33], ["ENGINE RUN", 0.43], ["GEN FIELD", 0.53]]:
+		text(t2[0], ip, Vector3(t2[1], -0.063, 0.002), Vector3.ZERO, 0.00028)
 	var lamps_def := [["lamp_pcs", Color(1.0, 0.1, 0.05), "PCS OPEN"], ["lamp_slip", Color(1.0, 0.65, 0.1), "WHEEL SLIP"],
 		["lamp_db", Color(0.3, 1.0, 0.4), "DYN BRAKE"], ["lamp_sand", Color(0.95, 0.95, 1.0), "SAND"],
 		["lamp_hb", Color(1.0, 0.12, 0.05), "HANDBRAKE"], ["lamp_comp", Color(0.95, 0.95, 1.0), "COMPRESSOR"],
 		["lamp_ctrl", Color(0.3, 1.0, 0.4), "IN CONTROL"]]
 	for i in range(lamps_def.size()):
 		var ld: Array = lamps_def[i]
-		lamp(p + ld[0], ip, Vector3(-0.32 + i * 0.062, 0.138, 0.004), Vector3.ZERO, ld[1], ld[2], 0.015, true)
+		lamp(p + ld[0], ip, Vector3(-0.6 + i * 0.07, -0.12, 0.004), Vector3.ZERO, ld[1], ld[2], 0.023, true)
 	text("PACIFIC NATIONAL  " + LocoScreen.NUMBERS[u], ip, Vector3(0.45, 0.135, 0.002), Vector3.ZERO, 0.00034, Color(0.7, 0.72, 0.75))
 	# desk light under the glare shield
 	var gl := OmniLight3D.new()
@@ -423,6 +424,28 @@ func _driver_desk(root: Node3D, b: MeshBatch, mt: Dictionary, p: String, u: int)
 	root.add_child(gl)
 	gl.position = Vector3(-0.72, 2.84, 2.5)
 	desk_lights.append(gl)
+
+
+## A desk lever whose pivot sits 'depth' below the desk top, so the shaft moves
+## along a slot in the quadrant plate; each label is engraved beside the slot
+## where the shaft stands at that position (labels on the right if 'right').
+func _slot_lever(id: String, title: String, f: Node3D, b: MeshBatch, mt: Dictionary, at: Vector2, above: float,
+		a0: float, sweep: float, depth: float, mat: Material, knob: Material, help: String, knob_r: float,
+		marks: Array, vmax: float, right: bool) -> CabControl:
+	var ctl := lever(id, title, f, Vector3(at.x, at.y, -depth), Vector3(90, 0, 0), above + depth,
+		Vector3(a0, 0, 0), Vector3(sweep, 0, 0), mat, knob, help, knob_r)
+	var y_at := func(v: float) -> float:
+		return at.y - depth * tan(deg_to_rad(a0 + sweep * v / vmax))
+	var ya: float = y_at.call(0.0)
+	var yb: float = y_at.call(vmax)
+	_fbx(b, mt["black"], f, Vector3(0.024, absf(ya - yb) + 0.03, 0.002), Vector3(at.x, (ya + yb) * 0.5, 0.0125))
+	for mk in marks:
+		var y: float = y_at.call(float(mk[0]))
+		var lb := text(mk[1], f, Vector3(at.x + (0.019 if right else -0.019), y, 0.013), Vector3.ZERO, 0.00034)
+		lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if right else HORIZONTAL_ALIGNMENT_RIGHT
+		# a tick on the slot's edge
+		_fbx(b, mt["white"], f, Vector3(0.006, 0.0015, 0.001), Vector3(at.x + (0.015 if right else -0.015), y, 0.0132))
+	return ctl
 
 
 # ------------------------------------------------------ second person's desk
@@ -737,6 +760,9 @@ func _views() -> void:
 	add_view("Battery box (left walkway)", Vector3(-1.38, 2.62, 5.18), -90.0, -30.0, null, true)
 	add_view("Engine room doors", Vector3(-1.4, 3.3, CoalModels.ENG_DOOR_Z0 + CoalModels.ENG_DOOR_W), -90.0, -28.0, null, true)
 	add_view("Handbrake (No. 2 end)", Vector3(-0.62, 3.3, 22.1), 0.0, -28.0, null, true)
+	if cab2 == null:
+		quick_views = ["Driver", "Engine control panel", "Battery box (left walkway)", "Handbrake (No. 2 end)", "Air brake cabinet"]
+		return
 	add_view("Coupling between the units", Vector3(-2.0, 1.5, 22.6), -69.0, -16.0, null, true)
 	add_view("Second unit: driver", Vector3(-0.72, 3.12, 3.38), 0.0, -10.0, cab2)
 	add_view("Second unit: engine control panel", Vector3(-0.05, 3.35, 3.48), 152.0, -15.0, cab2)
@@ -751,7 +777,7 @@ func _views() -> void:
 func needs_torch(view_name: String) -> bool:
 	if view_outside.get(view_name, false):
 		return true
-	var u := 1 if view_anchor.get(view_name, self) == cab2 else 0
+	var u := 1 if cab2 and view_anchor.get(view_name, self) == cab2 else 0
 	return dome_lights[u].light_energy <= 0.0 and desk_lights[u].light_energy <= 0.0
 
 
@@ -762,7 +788,7 @@ func update_visuals(sim: C92Sim, delta: float) -> void:
 		for s in screens:
 			s.sim = sim
 	var c := maxi(sim.ctrl, 0)
-	for u in range(2):
+	for u in range(units.size()):
 		var p: String = PFX[u]
 		var pw: bool = sim._powered(u)
 		var live: bool = pw and val(p + "cb_control") > 0.5
@@ -823,6 +849,7 @@ func update_visuals(sim: C92Sim, delta: float) -> void:
 			sm.set_shader_parameter("wipe_rate", rate)
 			sm.set_shader_parameter("wipe_idle", _wiper_idle[u])
 			sm.set_shader_parameter("speed", absf(sim.train.speed))
-	var conn := val("mu_jumper") > 0.5
-	mu_connected.visible = conn
-	mu_stowed.visible = not conn
+	if mu_connected:
+		var conn := val("mu_jumper") > 0.5
+		mu_connected.visible = conn
+		mu_stowed.visible = not conn

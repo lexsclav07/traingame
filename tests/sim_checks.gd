@@ -262,21 +262,22 @@ func _emu_tests() -> void:
 
 
 # ============================================================ 92 class pair
-func _make_c92(start: int, wagons: int, loaded: bool, s0: float) -> void:
+func _make_c92(start: int, wagons: int, loaded: bool, s0: float, units := 2, route := "nsw") -> void:
 	if train:
 		train.queue_free()
 		sim.queue_free()
 	GameSettings.coal_loaded = loaded
 	GameSettings.coal_wagons = wagons
 	track = Track.new()
-	track.build(RouteDefs.get_route("nsw"))
+	track.build(RouteDefs.get_route(route))
 	train = Train.new()
 	world.add_child(train)
 	train.setup(track, s0)
 	var lead := CoalModels.c44aci("9206")
-	var trail := CoalModels.c44aci("9211")
+	var trail: Vehicle = CoalModels.c44aci("9211") if units == 2 else null
 	train.add_vehicle(lead)
-	train.add_vehicle(trail)
+	if trail:
+		train.add_vehicle(trail)
 	for i in range(wagons):
 		train.add_vehicle(CoalModels.coal_wagon(loaded, i + 1, i == wagons - 1))
 	cab = C92Cab.new()
@@ -453,3 +454,48 @@ func _c92_tests() -> void:
 	cab.c("l_sand").release()
 	print("6. 1 in 40 bank, 20 loaded wagons (%.0f t): %d km/h after 4 min, rolled back %.2f m/s at worst, TE %d kN, slipping %s" % [train.total_mass() / 1000.0, int(kmh()), -S["min"], int((cs.te[0] + cs.te[1]) / 1000.0), str(cs.slip)])
 	check(kmh() > 15.0 and S["min"] > -0.5, "two units lift 20 loaded wagons up the 1 in 40")
+	# 7. one unit running light on the level: a standing start, flat out
+	_make_c92(GameSettings.StartState.READY, 0, true, 150.0, 1, "flat")
+	cs = sim as C92Sim
+	cab.c("l_ind_brake").set_value(0.0)
+	cab.c("l_throttle").set_value(8)
+	S = {"t60": -1.0, "t100": -1.0, "t400": -1.0, "v400": 0.0, "vmax": 0.0}
+	var d7 := train.odometer
+	t = 0.0
+	run(150.0, 0.05, func():
+		cs.alerter_t = 0.0
+		if S["t60"] < 0.0 and kmh() >= 60.0:
+			S["t60"] = t
+		if S["t100"] < 0.0 and kmh() >= 100.0:
+			S["t100"] = t
+		if S["t400"] < 0.0 and train.odometer - d7 >= 400.0:
+			S["t400"] = t
+			S["v400"] = kmh()
+		S["vmax"] = maxf(S["vmax"], kmh())
+		return false)
+	print("7. One 92 class running light (%.0f t), notch 8 from a stand: 0-60 km/h %.1f s, 0-100 km/h %.1f s, 400 m in %.1f s at %d km/h, top speed %.1f km/h" % [
+		train.total_mass() / 1000.0, S["t60"], S["t100"], S["t400"], int(S["v400"]), S["vmax"]])
+	check(S["t100"] > 12.0 and S["t100"] < 45.0, "a light engine reaches 100 km/h in a plausible time")
+	check(S["vmax"] > 110.0 and S["vmax"] < 118.0, "the locomotive computer holds it at its 115 km/h maximum")
+	# 8. a single unit from cold, through its own controls
+	_make_c92(GameSettings.StartState.COLD, 0, true, 150.0, 1, "flat")
+	cs = sim as C92Sim
+	for id in ["l_bat_door", "l_bat2_door", "l_ecp_door", "l_bat_switch"]:
+		cab.c(id).set_value(1.0)
+	for b in C92Sim.BREAKERS:
+		cab.c("l_" + b).set_value(1.0)
+	run(30.0)
+	hold_button("l_fuel_prime", 8.0)
+	hold_button("l_engine_start", 10.0, func(): return cs.is_running(0))
+	cab.c("l_ecs").set_value(1.0)
+	cab.c("l_handbrake").set_value(0.0)
+	for sw in ["sw_control", "sw_engine_run", "sw_gen_field"]:
+		cab.c("l_" + sw).set_value(1.0)
+	run(240.0, 0.1, func(): return cs.mr[0] > 860.0 and cs.bp[0] > 480.0)
+	cab.c("l_auto_brake").set_value(0.0)
+	cab.c("l_ind_brake").set_value(0.0)
+	cab.c("l_reverser").set_value(2.0)
+	cab.c("l_throttle").set_value(3)
+	run(20.0)
+	print("8. Single unit from cold: engine %s, MR %d kPa, BP %d kPa, %d km/h after 20 s in notch 3" % [cs.eng[0], int(cs.mr[0]), int(cs.bp[0]), int(kmh())])
+	check(cs.is_running(0) and kmh() > 5.0, "a single 92 class starts from cold and moves off on its own")

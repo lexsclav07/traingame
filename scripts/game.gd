@@ -22,6 +22,10 @@ var paused := false
 var time_idx := 0
 var clock := 0.0
 var _help_on := false
+# drag timer: arms at a stand, starts when the train moves
+var _dt_state := 0        # 0 armed (stopped), 1 running, 2 finished
+var _dt := {}
+var _dt_best := {}
 
 
 func _ready() -> void:
@@ -101,7 +105,12 @@ func _build() -> void:
 	clock = {"day": 10.5, "dusk": 18.3, "night": 22.0}.get(gs.time_of_day, 10.5) * 3600.0
 	built = true
 	var start_names := ["cold and dark", "prepared, awaiting the crew", "ready to drive"]
-	var train_names := ["Mariyung", "Mallard", "92 class coal train (%d %s wagons)" % [gs.coal_wagons, "loaded" if gs.coal_loaded else "empty"]]
+	var c92_name := "92 class" + (" pair" if gs.c92_units >= 2 else "")
+	if gs.coal_wagons > 0:
+		c92_name += " on a coal train (%d %s wagons)" % [gs.coal_wagons, "loaded" if gs.coal_loaded else "empty"]
+	else:
+		c92_name += ", light engine"
+	var train_names := ["Mariyung", "Mallard", c92_name]
 	_on_message("%s at %s, %s. F1 = controls and help, F2 = start-up checklist." % [
 		train_names[gs.train], track.route["name"].split(" (")[0], start_names[gs.start_state]], "good")
 
@@ -171,9 +180,10 @@ func _build_a4() -> void:
 func _build_c92() -> void:
 	var gs := GameSettings
 	var lead := CoalModels.c44aci("9206")
-	var trail := CoalModels.c44aci("9211")
+	var trail: Vehicle = CoalModels.c44aci("9211") if gs.c92_units >= 2 else null
 	train.add_vehicle(lead)
-	train.add_vehicle(trail)
+	if trail:
+		train.add_vehicle(trail)
 	var n: int = gs.coal_wagons
 	for i in range(n):
 		train.add_vehicle(CoalModels.coal_wagon(gs.coal_loaded, i + 1, i == n - 1))
@@ -189,7 +199,7 @@ func _build_c92() -> void:
 	train.sim = cs
 	diesel = DieselEffects.new()
 	add_child(diesel)
-	diesel.setup([lead, trail])
+	diesel.setup([lead, trail] if trail else [lead])
 
 
 func _on_message(t: String, kind: String) -> void:
@@ -225,7 +235,8 @@ func _process(delta: float) -> void:
 	if diesel:
 		# which locomotive's engine the listener is nearest
 		var anchor = cab.view_anchor.get(rig.view_name(), cab) if rig.mode == "cab" else cab
-		audio.near_unit = 1 if anchor == (cab as C92Cab).cab2 else 0
+		var c2: Node3D = (cab as C92Cab).cab2
+		audio.near_unit = 1 if c2 and anchor == c2 else 0
 	audio.curve = absf(track.curv_at(train.front_s - 20.0))
 	audio.update_audio(delta, ts, rig.mode == "cab")
 	# HUD
@@ -252,6 +263,57 @@ func _process(delta: float) -> void:
 			train.lat_accel, train.odometer / 1000.0])
 	hud.set_details(det)
 	hud.set_checklist(sim.checklist(), "Start-up checklist (F2)")
+	if GameSettings.drag_timer:
+		_drag_timer(sim_dt)
+
+
+## Standing-start timer: 0-60 and 0-100 km/h, 400 m and 1 km, with the best
+## of the session. Stop the train to arm it again.
+func _drag_timer(dt: float) -> void:
+	var v := absf(train.speed) * 3.6
+	match _dt_state:
+		0:
+			if v > 0.5:
+				_dt_state = 1
+				_dt = {"t": 0.0, "d0": train.odometer, "vmax": 0.0}
+		1, 2:
+			if _dt_state == 1:
+				_dt["t"] += dt
+				_dt["vmax"] = maxf(_dt["vmax"], v)
+				var d: float = train.odometer - float(_dt["d0"])
+				for k in [["60", 60.0], ["100", 100.0]]:
+					if not _dt.has(k[0]) and v >= k[1]:
+						_dt[k[0]] = _dt["t"]
+				for k2 in [["400m", 400.0], ["1km", 1000.0]]:
+					if not _dt.has(k2[0]) and d >= k2[1]:
+						_dt[k2[0]] = _dt["t"]
+						_dt[k2[0] + "v"] = v
+				if _dt.has("1km"):
+					_dt_state = 2
+					for key in ["60", "100", "400m", "1km"]:
+						if _dt.has(key) and (not _dt_best.has(key) or _dt[key] < _dt_best[key]):
+							_dt_best[key] = _dt[key]
+					hud.message("Run complete: 0-100 km/h %s, 400 m %s, 1 km %s. Stop to reset the timer." % [_fmt_t("100"), _fmt_t("400m"), _fmt_t("1km")], "good")
+			if v < 0.05:
+				_dt_state = 0
+	var t := "[center][b]DRAG TIMER[/b]   "
+	if _dt_state == 0:
+		t += "[color=#ffd860]READY: go when you like[/color]"
+	else:
+		t += "[color=#ffffff]%.1f s[/color]   %d km/h   %d m" % [_dt["t"], int(v), int(train.odometer - float(_dt["d0"]))]
+	t += "\n[font_size=15]"
+	for key in [["60", "0-60"], ["100", "0-100"], ["400m", "400 m"], ["1km", "1 km"]]:
+		t += "%s  [color=#a8ffb0]%s[/color]%s     " % [key[1], _fmt_t(key[0]) if _dt_state > 0 else "--", ("  (best %.1f)" % _dt_best[key[0]]) if _dt_best.has(key[0]) else ""]
+	hud.set_timer(t + "[/font_size][/center]")
+
+
+func _fmt_t(key: String) -> String:
+	if not _dt.has(key):
+		return "--"
+	var s := "%.1f s" % float(_dt[key])
+	if _dt.has(key + "v"):
+		s += " @ %d" % int(_dt[key + "v"])
+	return s
 
 
 func _key_for(id: String) -> String:

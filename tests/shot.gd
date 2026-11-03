@@ -25,6 +25,20 @@ func _initialize() -> void:
 	prefix = a[5]
 	shots = Array(a[6].split(","))
 	gs.show_tooltips = false
+	# extra settings: SHOT_OPTS="units=1,wagons=0,route=flat,drag=1,tutorial=1"
+	for kv in OS.get_environment("SHOT_OPTS").split(",", false):
+		var p := kv.split("=")
+		match p[0]:
+			"units":
+				gs.c92_units = int(p[1])
+			"wagons":
+				gs.coal_wagons = int(p[1])
+			"route":
+				gs.route = p[1]
+			"drag":
+				gs.drag_timer = p[1] == "1"
+			"tutorial":
+				gs.tutorial = p[1] == "1"
 	game = load("res://scenes/game.tscn").instantiate()
 	root.add_child(game)
 
@@ -44,7 +58,7 @@ func _process(_d: float) -> bool:
 	wait += 1
 	if wait >= settle:
 		var spec: String = shots[idx]
-		if not (spec.begins_with("move") or spec.begins_with("ctl") or spec.begins_with("sim") or spec.begins_with("wait") or spec.begins_with("run") or spec.begins_with("xing")):
+		if not (spec.begins_with("move") or spec.begins_with("ctl") or spec.begins_with("sim") or spec.begins_with("wait") or spec.begins_with("run") or spec.begins_with("xing") or spec.begins_with("tut")):
 			root.get_viewport().get_texture().get_image().save_png(_out() + "%s_%02d.png" % [prefix, idx])
 			print("saved %s_%02d (%s)" % [prefix, idx, spec])
 		idx += 1
@@ -96,6 +110,12 @@ func _setup(spec: String) -> void:
 		"wait":
 			# wait:<frames> (let the game run, e.g. wipers sweeping)
 			settle = int(p[1])
+		"tut":
+			# tut:<step number>[:show]  tutorial step, optionally "Show me"
+			game.tutorial._enter(int(p[1]) - 1)
+			if p.size() > 2:
+				game.tutorial.show_target()
+			settle = 6
 		"run":
 			# run:<seconds> of simulation without rendering it
 			for i in range(int(float(p[1]) / 0.05)):

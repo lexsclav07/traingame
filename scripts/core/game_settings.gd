@@ -12,10 +12,11 @@ var train: int = TrainType.MARIYUNG
 var mariyung_cars: int = 6          # 4, 6, 8 (4+4) or 10 (6+4)
 var a4_coaches: int = 6             # passenger coaches behind the tender
 var a4_dynamometer: bool = true     # add the LNER dynamometer car (as on 3 July 1938)
-var coal_wagons: int = 20           # coal hoppers behind the two 92 class
+var coal_wagons: int = 20           # coal hoppers behind the 92 class (0 = light engine)
 var coal_loaded: bool = true        # loaded (120 t each) or empty (23 t)
+var c92_units: int = 2              # one 92 class, or two in multiple
 var start_state: int = StartState.READY
-var route: String = "auto"          # auto / nsw / ecml
+var route: String = "auto"          # auto / nsw / ecml / flat
 var time_of_day: String = "day"     # day / dusk / night
 var weather: String = "clear"       # clear / rain / fog
 var passenger_load: float = 0.3     # 0..1 of seated capacity
@@ -25,6 +26,8 @@ var show_tooltips: bool = true
 var graphics_quality: int = 2       # 0 low, 1 medium, 2 high, 3 ultra
 var mouse_sensitivity: float = 0.2
 var master_volume: float = 0.8
+var drag_timer: bool = false        # 0-100 km/h and 400 m timer
+var tutorial: bool = false          # this session runs the step-by-step tutorial (not saved)
 
 ## Key map: action -> list of keys. Mouse: LMB operate/drag, RMB hold to look, wheel adjust.
 const KEYS := {
@@ -77,6 +80,8 @@ const KEYS := {
 	"ai_driver": [KEY_F6],
 	"ai_speed_up": [KEY_PAGEUP],
 	"ai_speed_down": [KEY_PAGEDOWN],
+	"tut_next": [KEY_ENTER, KEY_KP_ENTER],   # tutorial: next step
+	"tut_show": [KEY_TAB],                    # tutorial: take me to the control
 }
 
 
@@ -109,7 +114,7 @@ func route_id() -> String:
 
 # ---------------------------------------------------------------- persistence
 const SAVE_PATH := "user://settings.cfg"
-const SAVED_KEYS := ["train", "mariyung_cars", "a4_coaches", "a4_dynamometer", "coal_wagons", "coal_loaded", "start_state",
+const SAVED_KEYS := ["train", "mariyung_cars", "a4_coaches", "a4_dynamometer", "coal_wagons", "coal_loaded", "c92_units", "drag_timer", "start_state",
 	"route", "time_of_day", "weather", "passenger_load", "ai_fireman", "show_tooltips",
 	"graphics_quality", "mouse_sensitivity", "master_volume"]
 

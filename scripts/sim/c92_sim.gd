@@ -54,7 +54,10 @@ const BREAKERS := ["cb_control", "cb_local", "cb_fuel", "cb_computer", "cb_excit
 enum VM { RELEASE, SERVICE, LAP, EMERG }
 
 var n := 0                           # vehicles
+var nu := 2                          # locomotives (1 or 2); wagons are vehicles nu .. n-1
 var loaded := true
+var train_max := TRAIN_MAX           # km/h: 80 with wagons, 115 running light
+const LOCO_MAX := 115.0              # km/h, the locomotive's own maximum
 # --- per unit (index 0 = lead / front unit, 1 = second unit) -------------
 var soc: Array[float] = [0.85, 0.85]              # battery state of charge
 var bat_v: Array[float] = [0.0, 0.0]
@@ -126,7 +129,7 @@ var parted := false
 
 
 func max_speed_kmh() -> float:
-	return TRAIN_MAX
+	return train_max
 
 
 # ================================================================== set-up
@@ -135,6 +138,8 @@ func setup(t: Train, c: Cab, start_state: int) -> void:
 	cab = c
 	route_units = "metric"
 	n = t.vehicles.size()
+	nu = 2 if c.c("t_bat_switch") else 1
+	train_max = TRAIN_MAX if n > nu else LOCO_MAX
 	loaded = GameSettings.coal_loaded
 	bp.resize(n)
 	ar.resize(n)
@@ -147,12 +152,12 @@ func setup(t: Train, c: Cab, start_state: int) -> void:
 	emerg_vent.resize(n)
 	for i in range(n):
 		var veh := t.vehicles[i]
-		cap[i] = (V_BP_LOCO if i < 2 else V_BP_WAGON) / P_ATM
+		cap[i] = (V_BP_LOCO if i < nu else V_BP_WAGON) / P_ATM
 		var gross := veh.total_mass()
 		# retarding force at 360 kPa: about 4 % of a loaded wagon's weight; the
 		# empty/load valve cuts the cylinder pressure on an empty wagon
-		f_ref[i] = 0.042 * 120000.0 * 9.81 * (1.0 if veh.mass_load > 1000.0 else 0.3) if i >= 2 else 0.0
-		if i >= 2 and gross < 1.0:
+		f_ref[i] = 0.042 * 120000.0 * 9.81 * (1.0 if veh.mass_load > 1000.0 else 0.3) if i >= nu else 0.0
+		if i >= nu and gross < 1.0:
 			f_ref[i] = 0.0
 	for id in cab.controls:
 		(cab.controls[id] as CabControl).changed.connect(_on_control)
@@ -176,7 +181,7 @@ func _ambient() -> float:
 
 
 func _cold() -> void:
-	for u in range(2):
+	for u in range(nu):
 		var p: String = PFX[u]
 		_setc(p + "bat_switch", 0)
 		for b in BREAKERS:
@@ -211,7 +216,7 @@ func _cold() -> void:
 
 ## Prepared (engines running, air up, handbrakes still on) or ready to drive.
 func _warm(ready: bool) -> void:
-	for u in range(2):
+	for u in range(nu):
 		var p: String = PFX[u]
 		_setc(p + "bat_switch", 1)
 		for b in BREAKERS:
@@ -326,10 +331,10 @@ func _on_control(ctl: CabControl) -> void:
 				notify("%s: engine stopping." % unit_name(u).capitalize())
 		"efco":
 			if pressed:
-				for k in range(2):
+				for k in range(nu):
 					if eng[k] in ["running", "cranking"]:
 						eng[k] = "stopping"
-				notify("Emergency fuel cut-off: both engines shut down. Pull the button out to reset it.", "warn")
+				notify("Emergency fuel cut-off: %s shut down. Pull the button out to reset it." % ("both engines" if nu == 2 else "engine"), "warn")
 		"scr_engine", "scr_air", "scr_alarms":
 			if pressed:
 				screen_page[u] = ["scr_engine", "scr_air", "scr_alarms"].find(short)
@@ -361,7 +366,7 @@ func _on_control(ctl: CabControl) -> void:
 func step(dt: float) -> void:
 	sim_time += dt
 	_control_stations()
-	for u in range(2):
+	for u in range(nu):
 		_electrics(u, dt)
 		_engine(u, dt)
 	_air(dt)
@@ -376,19 +381,19 @@ func step(dt: float) -> void:
 func _control_stations() -> void:
 	mu_link = _on("mu_jumper")
 	var live := []
-	for u in range(2):
+	for u in range(nu):
 		live.append(_powered(u) and _uon(u, "cb_control") and _uon(u, "sw_control"))
 	ctrl = -1
-	if live[0] and live[1]:
+	if nu == 2 and live[0] and live[1]:
 		ctrl = 0
 		_say("two_ctrl", "Both cabs have CONTROL on: the second unit cannot follow. Switch CONTROL off in the cab you are not driving from.", "warn")
 	elif live[0]:
 		ctrl = 0
 		_unsay("two_ctrl")
-	elif live[1]:
+	elif nu == 2 and live[1]:
 		ctrl = 1
 		_unsay("two_ctrl")
-	for u in range(2):
+	for u in range(nu):
 		var ok := true
 		var why := ""
 		if ctrl < 0:
@@ -544,7 +549,7 @@ func _engine(u: int, dt: float) -> void:
 # ================================================================== air
 func _air(dt: float) -> void:
 	# compressors (engine driven, unloaded by the governor), MR equalising pipe
-	for u in range(2):
+	for u in range(nu):
 		var running := is_running(u) and _uon(u, "cb_comp")
 		if mr[u] < MR_CUT_IN:
 			comp_loaded[u] = running
@@ -569,7 +574,7 @@ func _air(dt: float) -> void:
 	# brake valves: equalising reservoir follows the automatic brake handle
 	var sources := []          # [cell, G, p_target, unit]
 	var emergency_any := false
-	for u in range(2):
+	for u in range(nu):
 		flow[u] = 0.0
 		var active := _u(u, "brake_mode") < 0.5 and computer[u]
 		if not active:
@@ -596,7 +601,7 @@ func _air(dt: float) -> void:
 			sources.append([u, g, minf(er[u], mr[u]), u])
 		elif bp[u] > er[u] + 0.3:
 			sources.append([u, G_EXHAUST, er[u], -2 - u])
-	for u in range(2):
+	for u in range(nu):
 		if _u(u, "emerg_valve") > 0.5:
 			sources.append([u, G_EMERG, 0.0, -1])
 			emergency_any = true
@@ -605,7 +610,7 @@ func _air(dt: float) -> void:
 	links.resize(maxi(n - 1, 0))
 	for i in range(n - 1):
 		links[i] = G_LINK
-	if not (_on("l_bp_cock") and _on("t_bp_cock")):
+	if nu == 2 and not (_on("l_bp_cock") and _on("t_bp_cock")):
 		links[0] = 0.0
 	var a := PackedFloat32Array()
 	var bdiag := PackedFloat32Array()
@@ -711,16 +716,16 @@ func _loco_brakes(dt: float) -> void:
 	# trailing unit down the independent application & release pipe
 	var link := _on("l_mr_cock") and _on("t_mr_cock")
 	var bail := false
-	for u in range(2):
+	for u in range(nu):
 		if _u(u, "brake_mode") < 0.5 and computer[u] and _uon(u, "bail_off"):
 			bail = true
-	for u in range(2):
+	for u in range(nu):
 		var own := _u(u, "brake_mode") < 0.5 and computer[u]
 		var cmd := 0.0
 		if own:
 			cmd = _u(u, "ind_brake") * LOCO_BC_MAX
 		elif link:
-			for k in range(2):
+			for k in range(nu):
 				if k != u and _u(k, "brake_mode") < 0.5 and computer[k]:
 					cmd = maxf(cmd, _u(k, "ind_brake") * LOCO_BC_MAX)
 		var auto := 0.0 if bail else minf(LOCO_BC_MAX, bc[u] * 1.25)
@@ -780,7 +785,7 @@ func _traction(dt: float) -> void:
 	var notch := int(round(_u(c, "throttle"))) if ctrl >= 0 else 0
 	var dbh := _u(c, "dynbrake") if ctrl >= 0 else 0.0
 	var mu := adhesion_mu()
-	for u in range(2):
+	for u in range(nu):
 		var veh := train.vehicles[u]
 		var weight := veh.total_mass() * 9.81
 		var sand := _uon(c, "sand") and ctrl >= 0 and _powered(u)
@@ -798,6 +803,8 @@ func _traction(dt: float) -> void:
 			var p_avail: float = P_RAIL * NOTCH_P[notch] * clampf((rpm[u] - 300.0) / (NOTCH_RPM[notch] - 300.0), 0.0, 1.0) * (0.45 + 0.55 * turbo[u]) * cold * tcc
 			var f_lim := TE_MAX * minf(1.0, 0.12 + notch * 0.16) * tcc
 			target = minf(f_lim, p_avail / maxf(absf(v), 0.6))
+			# the locomotive computer holds the maximum speed by cutting traction
+			target *= clampf((LOCO_MAX + 1.0 - vk) / 3.0, 0.0, 1.0)
 		# AC creep control holds the wheels just short of slipping
 		var adh := mu_u * weight
 		slip[u] = target > adh * 0.98
@@ -823,13 +830,13 @@ func _traction(dt: float) -> void:
 	traction_force = total_te
 	# brakes: wagons, locos (with the handbrake), dynamic brake
 	var f := total_db
-	for u in range(2):
+	for u in range(nu):
 		var veh2 := train.vehicles[u]
 		f += LOCO_BRAKE_F * loco_bc[u] / LOCO_BC_MAX
 		f += _u(u, "handbrake") * 0.1 * veh2.total_mass() * 9.81
 	var f_loco := f
 	var mu_b := adhesion_mu(true) + 0.1
-	for i in range(2, n):
+	for i in range(nu, n):
 		var fw: float = f_ref[i] * clampf(bc[i] / 360.0, 0.0, 1.3)
 		var cap_f := mu_b * train.vehicles[i].total_mass() * 9.81
 		f += minf(fw, cap_f)
@@ -849,12 +856,14 @@ func _traction(dt: float) -> void:
 ## dynamic brake on the locomotives, the train brakes on the wagons); the slack
 ## then runs out or in, and the impact speed is how hard the train is handled.
 func _slack(dt: float, f_loco_brake: float, f_wagon_brake: float) -> void:
-	if n < 3:
+	if n < nu + 1:
 		return
-	var m_l := train.vehicles[0].total_mass() + train.vehicles[1].total_mass()
+	var m_l := 0.0
+	for u in range(nu):
+		m_l += train.vehicles[u].total_mass()
 	var m_w := train.total_mass() - m_l
 	var dirv := signf(train.speed) if absf(train.speed) > 0.05 else signf(traction_force)
-	var half := SLACK_PER_COUPLER * (n - 2) * 0.5
+	var half := SLACK_PER_COUPLER * (n - nu) * 0.5
 	if dirv == 0.0:
 		slack_w = 0.0
 		return
@@ -888,7 +897,7 @@ func _slack_hit(w: float, run_out: bool) -> void:
 	if w > 2.0 and not parted:
 		parted = true
 		_open_pcs("train parted")
-		for i in range(2, n):
+		for i in range(nu, n):
 			emerg_vent[i] = G_EMERG
 		failed = true
 		fail_reason = "The train parted: a coupler knuckle broke in a slack %s at %.1f m/s. Open the throttle and apply the dynamic brake a notch at a time, and let the slack adjust before adding more." % [what, w]
@@ -915,7 +924,7 @@ func _lights(dt: float) -> void:
 	if horn > 0.3:
 		ditch_flash = 15.0
 	ditch_flash = maxf(0.0, ditch_flash - dt)
-	for u in range(2):
+	for u in range(nu):
 		var veh := train.vehicles[u]
 		var lights_ok := _powered(u) and _uon(u, "cb_lights")
 		var hl := int(_u(u, "headlights")) if lights_ok else 0
@@ -959,7 +968,7 @@ func _lights(dt: float) -> void:
 
 # ================================================================== misc
 func _misc(dt: float) -> void:
-	for u in range(2):
+	for u in range(nu):
 		var w := int(_u(u, "wipers"))
 		if _powered(u) and w > 0:
 			wiper_phase[u] += dt * (0.6 if w == 1 else 1.0)
@@ -981,7 +990,7 @@ func _misc(dt: float) -> void:
 		notify("Brake test complete: the train brakes applied and released.", "good")
 	# cab air-conditioning and the train radio
 	var amb := _ambient()
-	for u in range(2):
+	for u in range(nu):
 		var ac := _powered(u) and _uon(u, "cb_cabair")
 		var warm := amb + (5.0 if GameSettings.time_of_day == "day" and weather == "clear" else 1.0)
 		var target := 22.0 if ac else warm
@@ -994,7 +1003,7 @@ func _misc(dt: float) -> void:
 			radio_ok[u] = false
 	# alarms for the displays
 	alarms.clear()
-	for u in range(2):
+	for u in range(nu):
 		var nm: String = ["UNIT 1", "UNIT 2"][u]
 		if _powered(u) and not is_running(u):
 			alarms.append("%s ENGINE NOT RUNNING" % nm)
@@ -1016,9 +1025,9 @@ func _misc(dt: float) -> void:
 		alarms.append("PCS OPEN - " + pcs_reason.to_upper())
 	if alerter_warn:
 		alarms.append("ALERTER")
-	if not mu_link:
+	if nu == 2 and not mu_link:
 		alarms.append("MU JUMPER NOT CONNECTED")
-	if not (_on("l_bp_cock") and _on("t_bp_cock")):
+	if nu == 2 and not (_on("l_bp_cock") and _on("t_bp_cock")):
 		alarms.append("BRAKE PIPE CLOSED BETWEEN UNITS")
 
 
@@ -1037,7 +1046,7 @@ func _sounds() -> void:
 	sound["sand"] = 1.0 if ctrl >= 0 and _uon(ctrl, "sand") and mr[ctrl] > 300.0 else 0.0
 	sound["alerter"] = 1.0 if alerter_warn else 0.0
 	sound["speed"] = absf(train.speed)
-	sound["inverter"] = clampf((absf(te[0]) + absf(te[1]) + db[0] + db[1]) / (2.0 * TE_MAX), 0.0, 1.0)
+	sound["inverter"] = clampf((absf(te[0]) + absf(te[1]) + db[0] + db[1]) / (nu * TE_MAX), 0.0, 1.0)
 	sound["release"] = clampf(maxf(0.0, -flow[maxi(ctrl, 0)]) / 4000.0, 0.0, 1.0)
 	sound["bc"] = loco_bc[0]
 	sound["jointed"] = false
@@ -1135,9 +1144,10 @@ func hud_lines() -> PackedStringArray:
 	out.append("%s   Reverser %s   Auto brake %s   Independent %d%%   %s   TE %d kN   DB %d kN" % [
 		throttle_label(c), ["REVERSE", "OFF", "FORWARD"][int(_u(c, "reverser"))], auto_label(c), int(_u(c, "ind_brake") * 100.0),
 		"Cab %d controlling" % (ctrl + 1) if ctrl >= 0 else "No cab controlling", int((te[0] + te[1]) / 1000.0), int((db[0] + db[1]) / 1000.0)])
-	out.append("BP %d kPa (rear %d)   ER %d   MR %d / %d   Loco BC %d   Wagon BC %d (rear %d)   Flow %d L/min" % [
-		int(bp[c]), int(bp[n - 1]), int(er[c]), int(mr[0]), int(mr[1]), int(loco_bc[0]), int(bc[2] if n > 2 else 0.0), int(bc[n - 1]), int(flow[c])])
-	for u in range(2):
+	out.append("BP %d kPa (rear %d)   ER %d   MR %s   Loco BC %d   Wagon BC %d (rear %d)   Flow %d L/min" % [
+		int(bp[c]), int(bp[n - 1]), int(er[c]), ("%d / %d" % [int(mr[0]), int(mr[1])]) if nu == 2 else str(int(mr[0])), int(loco_bc[0]),
+		int(bc[nu] if n > nu else 0.0), int(bc[n - 1]), int(flow[c])])
+	for u in range(nu):
 		out.append("Unit %d: %s %d rpm  water %d C  fuel %d L  battery %d V%s" % [u + 1, eng[u].to_upper(), int(rpm[u]), int(water_t[u]), int(fuel_l[u]), int(bat_v[u]),
 			("   NOT LOADING: " + why_not[u]) if why_not[u] != "" and ctrl >= 0 and is_running(u) else ""])
 	if pcs_open:
@@ -1146,9 +1156,27 @@ func hud_lines() -> PackedStringArray:
 
 
 func checklist() -> Array:
+	if nu == 1:
+		var cb1 := true
+		for b in ["cb_control", "cb_local", "cb_fuel", "cb_computer", "cb_excite", "cb_tcc1", "cb_tcc2", "cb_comp"]:
+			cb1 = cb1 and _uon(0, b)
+		return [
+			["Battery box on the left walkway: open both doors, battery switch ON", _uon(0, "bat_switch")],
+			["Engine control panel (behind the driver): open the door, breakers ON (control, local, fuel pump, computer, excitation, TCC 1 & 2, compressor)", cb1 and _uon(0, "bat_switch")],
+			["Computer booted (about 25 s)", computer[0]],
+			["Engine started: ECS in ISOLATE, hold FUEL PRIME, then hold ENGINE START", is_running(0)],
+			["Engine control switch to RUN, brake valve LEAD (air brake cabinet)", int(_u(0, "ecs")) == 1 and _u(0, "brake_mode") < 0.5],
+			["Main reservoir above 850 kPa (use + to speed up time)", mr[0] > 850.0],
+			["Brake pipe charged (above 470 kPa)" if n == 1 else "Brake pipe charged to the last wagon (rear above 470 kPa)", bp[n - 1] > 470.0],
+			["Handbrake released (wheel at the No. 2 end)", _u(0, "handbrake") < 0.05],
+			["Desk: CONTROL, ENGINE RUN and GEN FIELD on", _uon(0, "sw_control") and _uon(0, "sw_engine_run") and _uon(0, "sw_gen_field")],
+			["Brake test: make a reduction (MINIMUM or more), then release", brake_test == 2],
+			["Headlights on (L), markers on", int(_u(0, "headlights")) >= 1 and _uon(0, "markers")],
+			["Reverser FORWARD (W), release the brakes, notch up (D)", absf(train.speed) > 0.5],
+		]
 	var both_bat := _uon(0, "bat_switch") and _uon(1, "bat_switch")
 	var cbs := true
-	for u in range(2):
+	for u in range(nu):
 		for b in ["cb_control", "cb_local", "cb_fuel", "cb_computer", "cb_excite", "cb_tcc1", "cb_tcc2", "cb_comp"]:
 			cbs = cbs and _uon(u, b)
 	return [
@@ -1176,11 +1204,12 @@ D / A  throttle up / down (with the throttle at IDLE, A sets up and increases th
 W / S  reverser forward / reverse    ' / ;  automatic brake apply / release    [ / ]  independent brake apply / release
 B (hold)  bail off the automatic brake on the locomotives    X (hold)  sand    Space  horn    Q  alerter reset
 L  headlights    Backspace  emergency brake
-1  next position (Shift+1 back)   5 driver   6 engine control panel   7 battery box   8 coupling   9 second unit's cab
+1  next position (Shift+1 back)   5 driver   6 engine control panel   7 battery box   8 coupling (one unit: handbrake)   9 second unit's cab (one unit: air brake cabinet)
 Each locomotive has its own battery box (left walkway), engine control panel and brake cabinet (behind the seats),
 engine room doors and a handbrake wheel at the No. 2 end. Click a cabinet door to open it.
 
 [b]Driving a heavy train[/b]
 The brake pipe takes seconds to carry an application to the last wagon and minutes to recharge after a release:
 plan ahead, use the dynamic brake to hold the train on falling grades, and keep the automatic brake for stopping.
-Loaded, the train is limited to 80 km/h. Over about 30 loaded wagons, two units may stall on the 1 in 40 bank."""
+Loaded, the train is limited to 80 km/h. Over about 30 loaded wagons, two units may stall on the 1 in 40 bank.
+Running light (no wagons) the limit is the locomotive's own 115 km/h; its computer cuts the power there."""

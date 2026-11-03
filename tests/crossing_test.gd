@@ -11,6 +11,8 @@ var cars_seen := 0
 func _initialize() -> void:
 	var a := OS.get_cmdline_user_args()
 	var gs = root.get_node("GameSettings")
+	gs.c92_units = 2
+	gs.tutorial = false
 	gs.train = {"mariyung": 0, "a4": 1, "c92": 2}.get(a[0] if a.size() > 0 else "mariyung", 0)
 	gs.start_state = 2
 	gs.graphics_quality = 0

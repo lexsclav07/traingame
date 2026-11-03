@@ -14,6 +14,8 @@ static func get_route(id: String) -> Dictionary:
 	match id:
 		"ecml":
 			return _ecml()
+		"flat":
+			return _flat()
 		_:
 			return _nsw()
 
@@ -88,4 +90,30 @@ static func _ecml() -> Dictionary:
 		"platforms": [[200.0, 200.0, 1]],
 		"mile_post_start": 76.0,             # miles from King's Cross at s = 0
 		"sun_rot": Vector3(-38, 35, 0),
+	}
+
+
+## A long, level oval with 6 km straights: room to see what a train will do
+## flat out (drag racing a light engine, speed trials, brake tests).
+static func _flat() -> Dictionary:
+	return {
+		"id": "flat",
+		"name": "Valley Straight (level loop with 6 km straights)",
+		"theme": "nsw",
+		"electrified": true,
+		"units": "metric",
+		"transition": 120.0,
+		"default_limit": 160.0,
+		"plan": [
+			["S", 6000, 160],
+			["C", 1800, 180, 140],
+		],
+		"profile": [[6000, 0], [5600, 0]],
+		"water_level": -14.0,
+		"terrain_amp": 10.0,
+		"sleeper_spacing": 0.6,
+		"troughs": [],
+		"platforms": [[400.0, 230.0, -1]],
+		"km_post_start": 160.0,
+		"sun_rot": Vector3(-48, -140, 0),
 	}

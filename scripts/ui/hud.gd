@@ -20,6 +20,7 @@ var pause_panel: PanelContainer
 var fail_panel: PanelContainer
 var fail_label: Label
 var loading: Label
+var timer_label: RichTextLabel
 var show_details := false
 
 
@@ -143,6 +144,22 @@ func _ready() -> void:
 	fc.pressed.connect(func(): fail_panel.visible = false)
 	fv.add_child(fc)
 	fail_panel.visible = false
+
+	# drag timer, top centre
+	var tp := _panel(root, Color(0.03, 0.04, 0.06, 0.78))
+	tp.anchor_left = 0.5
+	tp.anchor_right = 0.5
+	tp.offset_left = -230
+	tp.offset_top = 14
+	timer_label = RichTextLabel.new()
+	timer_label.bbcode_enabled = true
+	timer_label.fit_content = true
+	timer_label.scroll_active = false
+	timer_label.custom_minimum_size = Vector2(460, 0)
+	timer_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tp.add_child(timer_label)
+	tp.visible = false
+	timer_label.set_meta("panel", tp)
 
 	loading = Label.new()
 	loading.text = "Building the line..."
@@ -270,6 +287,12 @@ func set_checklist(items: Array, title: String) -> void:
 		else:
 			t += "[color=#9aa0aa]☐ %s[/color]\n" % it[0]
 	check_label.text = t
+
+
+func set_timer(t: String) -> void:
+	var tp: Control = timer_label.get_meta("panel")
+	tp.visible = t != ""
+	timer_label.text = t
 
 
 func set_help(t: String) -> void:

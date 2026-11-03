@@ -377,13 +377,37 @@ func lamp(id: String, parent: Node3D, pos: Vector3, rot: Vector3, col: Color, le
 	var m := MU.lamp(col, 0.0)
 	m.albedo_color = col.darkened(0.7)
 	if square:
-		MU.box(host, Vector3(size * 2.2, size * 1.4, 0.006), Vector3(0, 0, 0.003), m)
+		# annunciator: the legend is engraved on the lens, readable lit or not
+		m.albedo_color = col.darkened(0.45)
+		var w := size * 2.2
+		var h := size * 1.4
+		MU.box(host, Vector3(w, h, 0.006), Vector3(0, 0, 0.003), m)
+		MU.box(host, Vector3(w + 0.005, h + 0.005, 0.004), Vector3(0, 0, 0.0015), MU.mat(Color(0.03, 0.03, 0.035), 0.5, 0.0, "lamp_bezel"))
+		if legend != "":
+			var lines := _legend_lines(legend)
+			var longest := 0
+			for ln in lines:
+				longest = maxi(longest, ln.length())
+			var px := minf(0.0003, w * 0.86 / (longest * 15.5))
+			px = minf(px, h * 0.8 / (lines.size() * 30.0))
+			MU.label(host, "\n".join(lines), Vector3(0, 0, 0.0063), px, Color(0.04, 0.04, 0.04), Vector3.ZERO, 24)
 	else:
 		MU.cyl(host, size, 0.008, Vector3(0, 0, 0.004), m, Vector3(90, 0, 0), 14)
+		if legend != "":
+			MU.label(host, legend, Vector3(0, -size * 1.9, 0.008), 0.0003, Color(0.95, 0.95, 0.95), Vector3.ZERO, 24)
 	lamps[id] = m
 	lamp_colors[id] = col
-	if legend != "":
-		MU.label(host, legend, Vector3(0, -size * 1.9 if not square else 0.0, 0.008), 0.0003, Color(0.95, 0.95, 0.95) if not square else Color(0.05, 0.05, 0.05), Vector3.ZERO, 24)
+
+
+## An annunciator legend on one line, or two when it is long and has a space.
+static func _legend_lines(t: String) -> PackedStringArray:
+	if t.length() <= 7 or t.find(" ") < 0:
+		return PackedStringArray([t])
+	var best := -1
+	for i in range(t.length()):
+		if t[i] == " " and (best < 0 or absi(i - t.length() / 2) < absi(best - t.length() / 2)):
+			best = i
+	return PackedStringArray([t.substr(0, best), t.substr(best + 1)])
 
 
 func set_lamp(id: String, on: bool, flash_period := 0.0) -> void:

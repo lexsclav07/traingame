@@ -56,7 +56,9 @@ Simulated systems:
 Real figures used: 3 cylinders 18½ × 26 in, 6 ft 8 in drivers, 250 psi, giving **35,455 lbf** tractive effort (the sim reproduces this), 41¼ sq ft grate, 5,000 gallon / 8 ton tender, loco 102 tons 19 cwt.
 
 ### Pacific National 92 class pair on a coal train (diesel-electric)
-Two UGL C44aci locomotives (GE 7FDL-16 engines, AC traction) working in multiple at the head of 5 to 60 Hunter Valley coal hoppers, loaded or empty. You can start both up from cold, set the second one up to trail, couple them up, and drive both from the front cab, like a real crew.
+Two UGL C44aci locomotives (GE 7FDL-16 engines, AC traction) working in multiple at the head of up to 60 Hunter Valley coal hoppers, loaded or empty. You can start both up from cold, set the second one up to trail, couple them up, and drive both from the front cab, like a real crew.
+
+In the menu you can also choose **one locomotive** instead of two, and **0 wagons** for a light engine (115 km/h, where the locomotive's computer cuts the power). The **Drag race** button sets up one 92 class on its own, ready to go, on the level Valley Straight with a 0-100 km/h, 400 m and 1 km timer.
 
 Simulated systems:
 - **Two complete locomotives**, each with its own **battery box** out on the left walkway (two doors and a knife-type battery isolating switch), an **engine control panel** behind the driver's seat (12 circuit breakers, the engine control switch, fuel prime, engine start and engine stop), an **air brake cabinet** behind the second person's seat (brake valve cut-out LEAD / TRAIL, dead engine cock, four gauges) and **engine room doors** that open on the V16 and its turbocharger. Every cabinet has to be opened before you can reach what's inside, and the mouse can't reach through closed doors or walls.
@@ -89,6 +91,7 @@ The physics is tested headlessly (`tests/`), and these checks run on every push:
 | Same train up the 1 in 40 | holds 32 km/h | about 34 km/h from power and weight |
 | Same train, full service brake from 53 km/h | brakes reach the last wagon in 3 s, stops in 279 m | 0.4-0.5 m/s² for loaded freight |
 | Same train, slack with full power, full dynamic brake and a full service applied as fast as the controls allow | hardest run-in 0.7 m/s: a bump, no damage | handled gradually, slack shouldn't hurt anything |
+| One 92 class running light (139 t), notch 8 from a stand on the level | 0-100 km/h in 25 s, 400 m in 26 s, held at 115 km/h | adhesion-limited start, 3.2 MW at the rail; 115 km/h maximum |
 
 ### Every control is tested
 `tests/control_effects.gd` operates every lever, switch, button and valve in every cab (105 on the 92 class pair, inside and out), one at a time, and checks that each one changes something in the simulation, the cab or the train (in the situation where it matters, for example EB reset after an emergency brake). `tests/pick_test.gd` checks that every control can be reached and clicked from a cab position, and that nothing inside a closed cabinet can be. `tests/crossing_test.gd` runs a train past every level crossing at speeds up to 200 km/h and checks that the road is shut before the train gets there, that no car is on the crossing, and that it opens again afterwards. All of them run on every push.
@@ -115,6 +118,8 @@ Pick **Low**, **Medium**, **High** or **Ultra** in the menu. Ultra adds SDFGI gl
 Both routes are continuous loops with curves, transition spirals, superelevation (cant), gradients, speed boards and distance posts.
 - **Hawkesbury Loop** (17.7 km): NSW-style electrified line with sandstone cuttings, bridges, gum trees, a 1 in 40 bank, curves down to 300 m radius, two level crossings with boom gates, and a platform at Wattle Gully. The coal train starts at the signal before the bridge on the station approach, at the foot of the bank.
 - **Stoke Bank Loop** (43.4 km): a 1930s East Coast Main Line-style circuit with telegraph poles, bullhead rail on chairs, jointed track, 11 km of 1 in 200 descent for record attempts, water troughs, and three gated level crossings.
+
+- **Valley Straight** (23.6 km): a level loop with two 6 km straights and gentle 1800 m curves, for flat-out runs and drag racing.
 
 Take a curve too fast and you derail.
 
