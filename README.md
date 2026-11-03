@@ -94,7 +94,7 @@ The physics is tested headlessly (`tests/`), and these checks run on every push:
 | One 92 class running light (139 t), notch 8 from a stand on the level | 0-100 km/h in 25 s, 400 m in 26 s, held at 115 km/h | adhesion-limited start, 3.2 MW at the rail; 115 km/h maximum |
 
 ### Every control is tested
-`tests/control_effects.gd` operates every lever, switch, button and valve in every cab (105 on the 92 class pair, inside and out), one at a time, and checks that each one changes something in the simulation, the cab or the train (in the situation where it matters, for example EB reset after an emergency brake). `tests/pick_test.gd` checks that every control can be reached and clicked from a cab position, and that nothing inside a closed cabinet can be. `tests/crossing_test.gd` runs a train past every level crossing at speeds up to 200 km/h and checks that the road is shut before the train gets there, that no car is on the crossing, and that it opens again afterwards. All of them run on every push.
+`tests/control_effects.gd` operates every lever, switch, button and valve in every cab (105 on the 92 class pair, inside and out), one at a time, and checks that each one changes something in the simulation, the cab or the train (in the situation where it matters, for example EB reset after an emergency brake). `tests/pick_test.gd` checks that every control can be reached and clicked from a cab position, and that nothing inside a closed cabinet can be. `tests/crossing_test.gd` runs a train past every level crossing at speeds up to 200 km/h and checks that the road is shut before the train gets there, that no car is on the crossing, and that it opens again afterwards. `tests/tutorial_test.gd` goes through every tutorial step and checks that the controls it points at exist and that Show me leaves you where the mouse can reach them. All of them run on every push.
 
 ## Graphics
 Everything you see is generated: the models are built in code and the textures come from `tools/gen_textures.py`.
@@ -136,6 +136,10 @@ Take a curve too fast and you derail.
 Every push to `main` builds Windows and Linux versions with GitHub Actions. Open the **Actions** tab, pick the latest run, and download `traingame-windows` or `traingame-linux` from **Artifacts**. Pushing a tag like `v0.1.0` also creates a **Release** with both zips.
 
 To export yourself: *Project → Export*, install the export templates when asked, and choose **Linux** or **Windows Desktop**.
+
+## Tutorial
+
+Press **Tutorial** in the menu. It starts the selected train cold (the Mallard with her fire banked) and walks you through the whole start-up and away, one control at a time: a panel explains each step, the controls you need are **ringed on screen** (an arrow points to any that are out of sight), **Show me** (Tab) takes you to the right spot and looks straight at the control, and each step ticks itself off once you've done it. Enter goes to the next step.
 
 ## Controls
 

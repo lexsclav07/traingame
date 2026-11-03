@@ -17,6 +17,7 @@ var effects: Effects
 var diesel: DieselEffects
 var audio: TrainAudio
 var crossings: LevelCrossings
+var tutorial: Tutorial
 var built := false
 var paused := false
 var time_idx := 0
@@ -113,6 +114,10 @@ func _build() -> void:
 	var train_names := ["Mariyung", "Mallard", c92_name]
 	_on_message("%s at %s, %s. F1 = controls and help, F2 = start-up checklist." % [
 		train_names[gs.train], track.route["name"].split(" (")[0], start_names[gs.start_state]], "good")
+	if gs.tutorial:
+		tutorial = Tutorial.new()
+		hud.add_child(tutorial)
+		tutorial.setup(self)
 
 
 func _build_mariyung() -> void:
@@ -338,6 +343,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if paused:
 		return
+	if tutorial and tutorial.visible and event is InputEventKey and event.pressed and not event.is_echo():
+		if event.is_action_pressed("tut_next"):
+			tutorial.next()
+			return
+		if event.is_action_pressed("tut_show"):
+			tutorial.show_target()
+			return
 	if rig.handle_input(event):
 		return
 	if not (event is InputEventKey) or not event.pressed or event.is_echo():

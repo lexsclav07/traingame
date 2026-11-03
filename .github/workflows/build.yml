@@ -51,6 +51,13 @@ jobs:
           timeout 600 ./godot --headless --path . -s res://tests/pick_test.gd -- c92
           timeout 600 ./godot --headless --path . -s res://tests/pick_test.gd -- c92 1
 
+      - name: Tutorial points at real controls, and Show me can reach them
+        run: |
+          timeout 600 ./godot --headless --path . -s res://tests/tutorial_test.gd -- mariyung
+          timeout 600 ./godot --headless --path . -s res://tests/tutorial_test.gd -- a4
+          timeout 600 ./godot --headless --path . -s res://tests/tutorial_test.gd -- c92 2
+          timeout 600 ./godot --headless --path . -s res://tests/tutorial_test.gd -- c92 1
+
       - name: Every cab control does something (Mariyung)
         run: timeout 900 ./godot --headless --path . -s res://tests/control_effects.gd -- mariyung 2
 
