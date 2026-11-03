@@ -372,6 +372,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		hud.help.visible = _help_on
 	elif event.is_action_pressed("checklist"):
 		hud.checklist.visible = not hud.checklist.visible
+		if tutorial and hud.checklist.visible and not tutorial.minimised:
+			tutorial.toggle_minimised()      # the checklist sits in the same corner
 	elif event.is_action_pressed("debug"):
 		hud.show_details = not hud.show_details
 	elif event.is_action_pressed("time_faster"):

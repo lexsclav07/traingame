@@ -41,16 +41,15 @@ func setup(g: Node) -> void:
 	sb.content_margin_top = 10
 	sb.content_margin_bottom = 12
 	panel.add_theme_stylebox_override("panel", sb)
+	# top right, over the windscreen: the desks and panels are lower down
 	panel.anchor_left = 1.0
 	panel.anchor_right = 1.0
-	panel.anchor_top = 1.0
-	panel.anchor_bottom = 1.0
 	panel.offset_left = -16
 	panel.offset_right = -16
-	panel.offset_top = -62
-	panel.offset_bottom = -62
+	panel.offset_top = 16
+	panel.offset_bottom = 16
 	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	panel.grow_vertical = Control.GROW_DIRECTION_END
 	add_child(panel)
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 6)
