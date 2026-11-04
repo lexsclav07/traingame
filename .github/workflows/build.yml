@@ -93,6 +93,21 @@ jobs:
           name: traingame-windows
           path: build/windows
 
+      - name: Publish the latest build as a release (direct download links)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd build
+          zip -qr traingame-windows.zip windows
+          zip -qr traingame-linux.zip linux
+          gh release delete latest-build --cleanup-tag --yes || true
+          git push --delete origin latest-build || true
+          gh release create latest-build traingame-windows.zip traingame-linux.zip \
+            --target "$GITHUB_SHA" --latest \
+            --title "Latest build ($(date -u +%Y-%m-%d), ${GITHUB_SHA::7})" \
+            --notes "Built automatically from the newest version on main. Windows: download traingame-windows.zip, extract it, run traingame.exe. Linux: download traingame-linux.zip, extract it, then chmod +x traingame.x86_64 and run it."
+
       - name: Publish a release for version tags
         if: startsWith(github.ref, 'refs/tags/v')
         env:

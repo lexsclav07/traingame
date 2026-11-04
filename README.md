@@ -133,7 +133,11 @@ Take a curve too fast and you derail.
 3. Press **F5** to play.
 
 ### Ready-made builds
-Every push to `main` builds Windows and Linux versions with GitHub Actions. Open the **Actions** tab, pick the latest run, and download `traingame-windows` or `traingame-linux` from **Artifacts**. Pushing a tag like `v0.1.0` also creates a **Release** with both zips.
+Download the newest version directly (no GitHub account needed):
+- **Windows:** [traingame-windows.zip](https://github.com/lexsclav07/traingame/releases/latest/download/traingame-windows.zip): extract it (right-click → Extract All) and run `traingame.exe`. If SmartScreen warns you, click *More info* → *Run anyway* (the build isn't signed).
+- **Linux:** [traingame-linux.zip](https://github.com/lexsclav07/traingame/releases/latest/download/traingame-linux.zip): extract it, `chmod +x traingame.x86_64`, run it.
+
+Every push to `main` builds both with GitHub Actions and replaces the **Latest build** release (see *Releases* on the repo page). The zips are also attached to each run under **Artifacts** on the Actions tab (you need to be signed in for those). Pushing a tag like `v0.1.0` creates a separate versioned release.
 
 To export yourself: *Project → Export*, install the export templates when asked, and choose **Linux** or **Windows Desktop**.
 
