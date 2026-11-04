@@ -26,7 +26,7 @@ static func _basics(g: Node, seat: String) -> Array:
 		_st("Welcome", ("You're in the %s. This tutorial takes you through a start-up from cold, one control at a time, and then drives away.\n\n" % seat) +
 			"[b]How it works:[/b] the controls you need are [color=#ffd060]ringed in yellow[/color]. If one is out of sight an arrow points to it, and [b]Show me (Tab)[/b] takes you straight there. Each step ticks itself off when you've done it.\n\n" +
 			"You can hide this panel, and come back to any step with Back."),
-		_st("Looking around", "Hold the [b]right mouse button[/b] and move the mouse to look around the cab. Let go to get the pointer back.\n\nThe [b]1[/b] key steps through the positions you can stand in (Shift+1 goes back); [b]3[/b] is the outside view, [b]4[/b] the lineside camera, and 1 brings you back in.",
+		_st("Looking around", "Hold the [b]right mouse button[/b] and move the mouse to look around the cab. Let go to get the pointer back.\n\n[b]Moving to another position:[/b] the bar at the bottom of the screen shows where you are. Its arrows (or the [b]Left / Right[/b] arrow keys) step to the previous / next position; click the name, or press [b]V[/b], for a list of every position: click one to go straight there. The number keys shown in the list jump there too: [b]1[/b] is always the driver's seat, [b]3[/b] the outside view.",
 			[], func() -> bool: return absf(rig.yaw) > 0.5 or absf(rig.pitch) > 0.35, "Hold the right mouse button and look around."),
 		_st("Using the controls", "Point at anything in the cab and a label tells you what it is, how it's set, and what it does.\n\n" +
 			"[b]Buttons and switches:[/b] click. [b]Rotary switches:[/b] left click turns them one way, right click the other.\n[b]Levers and wheels:[/b] drag them with the left button, or point at them and use the [b]scroll wheel[/b].\n[b]Doors and cabinets:[/b] click to open or close.\n\n" +
@@ -63,8 +63,8 @@ static func c92(g: Node) -> Array:
 		_st("Gauges and displays", "The two air gauges show the [b]main reservoir[/b] (red needle) and equalising reservoir, then the [b]brake pipe[/b] and brake cylinder (red). The displays come alive once the computer has booted; the keys under the right one change its page. The row of lamps under the left display are warnings: PCS open, wheel slip, handbrake on and so on.\n\nRight now everything is dead: the battery is isolated.",
 			["g:l_air1", "g:l_air2", "g:l_loadmeter", "g:l_speedo"], null, "", "Driver"),
 		# ------------------------------------------------- front unit
-		_st("Out to the battery box", "The battery isolating switch is outside, in a box on the left walkway just behind the cab. Press [b]7[/b] to go there (or Show me).",
-			["l_bat_door"], func() -> bool: return rig.mode == "cab" and rig.view_name() == "Battery box (left walkway)", "Press 7 to go out to the battery box.", "Battery box (left walkway)"),
+		_st("Out to the battery box", "The battery isolating switch is outside, in a box on the left walkway just behind the cab. Press [b]7[/b] to go there, or press [b]V[/b] and click it in the list of positions.",
+			["l_bat_door"], func() -> bool: return rig.mode == "cab" and rig.view_name() == "Battery box (left walkway)", "Press 7, or V and pick it from the list.", "Battery box (left walkway)"),
 		_st("Open the battery box", "Click both doors of the battery box to open them.",
 			["l_bat_door", "l_bat2_door"], func() -> bool: return on.call("l_bat_door") and on.call("l_bat2_door"), "Click both battery box doors open."),
 		_st("Battery on", "Click the [b]battery isolating switch[/b]. That puts the 74 V battery on the locomotive's circuits: the first switch in any start-up, and the last one off.",
@@ -84,7 +84,7 @@ static func c92(g: Node) -> Array:
 	])
 	if two:
 		s.append_array([
-			_st("Now the second unit", "9211 has to be started too. Press [b]9[/b] for its cab, then [b]1[/b] a few times to step through its positions to its battery box (or just press Show me).",
+			_st("Now the second unit", "9211 has to be started too. Press [b]V[/b] and pick [b]Battery box[/b] under Second unit (or just press Show me).",
 				["t_bat_door"], func() -> bool: return rig.mode == "cab" and rig.view_name() == "Second unit: battery box", "Get to the second unit's battery box.", "Second unit: battery box"),
 			_st("Second unit: battery", "Same as before: open both doors and switch the battery on.",
 				["t_bat_door", "t_bat2_door", "t_bat_switch"], func() -> bool: return on.call("t_bat_switch"), "Open the box, battery switch ON."),
@@ -214,7 +214,7 @@ static func a4(g: Node) -> Array:
 			"[b]Ejectors[/b]: make the vacuum that holds the brakes off.\n" +
 			"[b]Cylinder cocks[/b] ([b]C[/b]), [b]sanders[/b] ([b]X[/b]), [b]whistle[/b] (Space).",
 			["regulator", "reverser", "brake", "large_ejector", "cocks", "whistle"]),
-		_st("The fireman's side", "Press [b]2[/b] for the fireman's position. The [b]firehole doors[/b] ([b]R[/b]) open onto the grate; click the [b]coal[/b] (or press [b]E[/b]) to fire a shovelful where you've aimed it ([b]Z[/b] picks the part of the grate). The [b]blower[/b] ([b]B[/b]) draws the fire when the engine isn't working, and the two [b]injectors[/b] ([b]I[/b], [b]O[/b]) put water in the boiler.\n\nIf you'd rather just drive, [b]F5[/b] turns the AI fireman on.",
+		_st("The fireman's side", "Press [b]2[/b] for the fireman's position (or pick it from the list with [b]V[/b]). The [b]firehole doors[/b] ([b]R[/b]) open onto the grate; click the [b]coal[/b] (or press [b]E[/b]) to fire a shovelful where you've aimed it ([b]Z[/b] picks the part of the grate). The [b]blower[/b] ([b]B[/b]) draws the fire when the engine isn't working, and the two [b]injectors[/b] ([b]I[/b], [b]O[/b]) put water in the boiler.\n\nIf you'd rather just drive, [b]F5[/b] turns the AI fireman on.",
 			["firedoor", "coal", "blower", "inj_live_steam"], null, "", "Fireman"),
 		_st("Water in the glass", "First thing on any footplate: check there's water showing in the [b]gauge glass[/b]. Never let it drop out of the bottom: the fusible plug melts and the fire's out.",
 			["gauge_test_l"], func() -> bool: return sim.level > 0.5, "Check the gauge glass (over half)."),

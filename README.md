@@ -147,8 +147,10 @@ Press **Tutorial** in the menu. It starts the selected train cold (the Mallard w
 
 | Key | Everywhere |
 |---|---|
-| 1 / 2 | cycle cab positions (Shift+1 goes back) / second position (fireman, Mariyung rear panel, 92 class second person) |
-| 5 - 9 | 92 class: driver, engine control panel, battery box, coupling, second unit's cab |
+| Left / Right arrows | previous / next position (also the ◀ ▶ on the position bar at the bottom of the screen) |
+| V | list of every position, grouped (in the cab, outside on foot, second unit, cameras), with their keys: click one to go there |
+| 1 / 2 | driver's seat / second position (fireman, Mariyung rear panel, 92 class second person) |
+| 5 - 9 | quick positions (92 class: driver, engine control panel, battery box, coupling, second unit's cab); the V list shows each one's key |
 | 3 / 4 | outside camera (drag to orbit, scroll to zoom) / lineside camera |
 | + / − | time acceleration up to ×120 (for raising steam or charging air) |
 | F1 / F2 / F3 | help / **start-up checklist** / technical details |

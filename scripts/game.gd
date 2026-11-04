@@ -18,6 +18,7 @@ var diesel: DieselEffects
 var audio: TrainAudio
 var crossings: LevelCrossings
 var tutorial: Tutorial
+var positions: PositionBar
 var built := false
 var paused := false
 var time_idx := 0
@@ -114,6 +115,14 @@ func _build() -> void:
 	var train_names := ["Mariyung", "Mallard", c92_name]
 	_on_message("%s at %s, %s. F1 = controls and help, F2 = start-up checklist." % [
 		train_names[gs.train], track.route["name"].split(" (")[0], start_names[gs.start_state]], "good")
+	# every position on a number key: cabs without their own quick list get
+	# their first five positions on 5-9
+	if cab.quick_views.is_empty():
+		for k in range(mini(5, cab.view_order.size())):
+			cab.quick_views.append(cab.view_order[k])
+	positions = PositionBar.new()
+	hud.add_child(positions)
+	positions.setup(self)
 	if gs.tutorial:
 		tutorial = Tutorial.new()
 		hud.add_child(tutorial)
@@ -258,8 +267,8 @@ func _process(delta: float) -> void:
 	var mm := int(clock / 60.0) % 60
 	var g := track.grade_at(train.front_s)
 	var grade_txt := "level" if absf(g) < 0.0004 else ("1 in %d %s" % [int(1.0 / absf(g)), "up" if g > 0 else "down"])
-	hud.set_info("%s   line speed %s   %s   %02d:%02d   %s%s" % [sim.speed_text(), lim_txt, grade_txt, hh, mm,
-		("time x%d   " % int(ts)) if ts > 1.0 else "", rig.view_name()])
+	hud.set_info("%s   line speed %s   %s   %02d:%02d%s" % [sim.speed_text(), lim_txt, grade_txt, hh, mm,
+		("   time x%d" % int(ts)) if ts > 1.0 else ""])
 	var det := sim.hud_lines()
 	if hud.show_details:
 		det.append("Train %d m, %d t   gradient %.1f per mille   curve R %s   lateral %.2f m/s2   odometer %.2f km" % [
@@ -355,12 +364,15 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey) or not event.pressed or event.is_echo():
 		return
 	if event.is_action_pressed("cam_driver"):
-		if (event as InputEventKey).shift_pressed:
-			rig.prev_cab_view()
-		else:
-			rig.next_cab_view()
+		rig.set_view(0)                  # 1 = back in the driver's seat
 	elif _quick_view(event):
 		pass
+	elif event.is_action_pressed("pos_list"):
+		positions.toggle_list()
+	elif event.is_action_pressed("pos_next"):
+		rig.next_cab_view()
+	elif event.is_action_pressed("pos_prev"):
+		rig.prev_cab_view()
 	elif event.is_action_pressed("cam_second"):
 		rig.set_view(1)
 	elif event.is_action_pressed("cam_external"):
@@ -409,7 +421,8 @@ func _help_text() -> String:
 	return sim.help_text() + """
 
 [b]Cameras & general[/b]
-1  cycle cab positions (Shift+1 back)    2  second position    3  outside (drag to orbit, scroll to zoom)    4  lineside
+Left / Right arrows (or the bar at the bottom)  previous / next position    V  list of every position: click one to go there
+1  first cab position    2  second position    3  outside (drag to orbit, scroll to zoom)    4  lineside
 Right mouse (hold)  look around    Mouse wheel  adjust the control under the cursor (or zoom)
 + / -  time acceleration (useful while raising steam or charging air)    F2 start-up checklist    F3 details    Esc  pause"""
 

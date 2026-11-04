@@ -77,6 +77,20 @@ func _process(_d: float) -> bool:
 		print("%s step %2d %-40s show me -> %-36s %s" % ["ok  " if ok else "FAIL", k + 1, st["title"], rig.view_name(), why])
 		if not ok:
 			fails += 1
+	# the position list: every entry takes you there, and the keys it shows work
+	var pb = game.positions
+	for nm in pb._buttons:
+		pb._go(nm)
+		var want: String = nm
+		var got: String = rig.view_name() if rig.mode == "cab" else ("@external" if rig.mode == "external" else "@lineside")
+		if got != want:
+			print("FAIL position list: %s took you to %s" % [nm, got])
+			fails += 1
+	var keyed := 0
+	for i in range(cab.view_order.size()):
+		if pb._key(i, cab.view_order[i]) != "":
+			keyed += 1
+	print("position list: %d entries, %d cab positions with a key" % [pb._buttons.size(), keyed])
 	print("tutorial failures: %d" % fails)
 	quit(1 if fails > 0 else 0)
 	return true

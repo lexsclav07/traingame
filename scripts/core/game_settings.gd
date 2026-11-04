@@ -82,6 +82,9 @@ const KEYS := {
 	"ai_speed_down": [KEY_PAGEDOWN],
 	"tut_next": [KEY_ENTER, KEY_KP_ENTER],   # tutorial: next step
 	"tut_show": [KEY_TAB],                    # tutorial: take me to the control
+	"pos_list": [KEY_V],                      # list of every position
+	"pos_prev": [KEY_LEFT],
+	"pos_next": [KEY_RIGHT],
 }
 
 

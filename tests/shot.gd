@@ -116,6 +116,10 @@ func _setup(spec: String) -> void:
 			if p.size() > 2:
 				game.tutorial.show_target()
 			settle = 6
+		"poslist":
+			# the position list open
+			game.positions.toggle_list()
+			settle = 6
 		"run":
 			# run:<seconds> of simulation without rendering it
 			for i in range(int(float(p[1]) / 0.05)):

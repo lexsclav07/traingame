@@ -1204,7 +1204,7 @@ D / A  throttle up / down (with the throttle at IDLE, A sets up and increases th
 W / S  reverser forward / reverse    ' / ;  automatic brake apply / release    [ / ]  independent brake apply / release
 B (hold)  bail off the automatic brake on the locomotives    X (hold)  sand    Space  horn    Q  alerter reset
 L  headlights    Backspace  emergency brake
-1  next position (Shift+1 back)   5 driver   6 engine control panel   7 battery box   8 coupling (one unit: handbrake)   9 second unit's cab (one unit: air brake cabinet)
+V  list of positions   Left / Right  previous / next   1 driver   5 driver   6 engine control panel   7 battery box   8 coupling (one unit: handbrake)   9 second unit's cab (one unit: air brake cabinet)
 Each locomotive has its own battery box (left walkway), engine control panel and brake cabinet (behind the seats),
 engine room doors and a handbrake wheel at the No. 2 end. Click a cabinet door to open it.
 
