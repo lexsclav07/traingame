@@ -23,6 +23,7 @@ var passenger_load: float = 0.3     # 0..1 of seated capacity
 var ai_fireman: bool = true         # A4: AI handles the fireman's side
 var ai_driver: bool = false         # A4: AI drives while you fire
 var show_tooltips: bool = true
+var show_controls: bool = false     # key guide always on screen
 var graphics_quality: int = 2       # 0 low, 1 medium, 2 high, 3 ultra
 var mouse_sensitivity: float = 0.2
 var master_volume: float = 0.8
@@ -38,6 +39,7 @@ const KEYS := {
 	"help": [KEY_F1],
 	"checklist": [KEY_F2],
 	"debug": [KEY_F3],
+	"show_controls": [KEY_F4],
 	"time_faster": [KEY_EQUAL, KEY_KP_ADD],
 	"time_slower": [KEY_MINUS, KEY_KP_SUBTRACT],
 	"pause_menu": [KEY_ESCAPE],
@@ -118,7 +120,7 @@ func route_id() -> String:
 # ---------------------------------------------------------------- persistence
 const SAVE_PATH := "user://settings.cfg"
 const SAVED_KEYS := ["train", "mariyung_cars", "a4_coaches", "a4_dynamometer", "coal_wagons", "coal_loaded", "c92_units", "drag_timer", "start_state",
-	"route", "time_of_day", "weather", "passenger_load", "ai_fireman", "show_tooltips",
+	"route", "time_of_day", "weather", "passenger_load", "ai_fireman", "show_tooltips", "show_controls",
 	"graphics_quality", "mouse_sensitivity", "master_volume"]
 
 

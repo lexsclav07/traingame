@@ -82,6 +82,7 @@ func _ready() -> void:
 	ui["sens"] = _slider(grid, "Mouse sensitivity", 0.05, 0.6, gs.mouse_sensitivity)
 	ui["vol"] = _slider(grid, "Volume", 0.0, 1.0, gs.master_volume)
 	ui["tips"] = _check(grid, "Control tooltips", gs.show_tooltips)
+	ui["keys"] = _check(grid, "Show controls on screen (F4)", gs.show_controls)
 	ui["drag"] = _check(grid, "Drag timer (0-100 km/h, 400 m)", gs.drag_timer)
 
 	var right := VBoxContainer.new()
@@ -264,3 +265,4 @@ func _read() -> void:
 	gs.mouse_sensitivity = (ui["sens"] as HSlider).value
 	gs.master_volume = (ui["vol"] as HSlider).value
 	gs.show_tooltips = (ui["tips"] as CheckBox).button_pressed
+	gs.show_controls = (ui["keys"] as CheckBox).button_pressed

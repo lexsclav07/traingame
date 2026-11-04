@@ -19,6 +19,7 @@ var audio: TrainAudio
 var crossings: LevelCrossings
 var tutorial: Tutorial
 var positions: PositionBar
+var keys_overlay: ControlsOverlay
 var built := false
 var paused := false
 var time_idx := 0
@@ -120,6 +121,10 @@ func _build() -> void:
 	if cab.quick_views.is_empty():
 		for k in range(mini(5, cab.view_order.size())):
 			cab.quick_views.append(cab.view_order[k])
+	keys_overlay = ControlsOverlay.new()
+	hud.add_child(keys_overlay)
+	keys_overlay.setup(self)
+	hud.controls_pressed.connect(keys_overlay.toggle)
 	positions = PositionBar.new()
 	hud.add_child(positions)
 	positions.setup(self)
@@ -367,6 +372,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		rig.set_view(0)                  # 1 = back in the driver's seat
 	elif _quick_view(event):
 		pass
+	elif event.is_action_pressed("show_controls"):
+		keys_overlay.toggle()
 	elif event.is_action_pressed("pos_list"):
 		positions.toggle_list()
 	elif event.is_action_pressed("pos_next"):
@@ -424,7 +431,7 @@ func _help_text() -> String:
 Left / Right arrows (or the bar at the bottom)  previous / next position    V  list of every position: click one to go there
 1  first cab position    2  second position    3  outside (drag to orbit, scroll to zoom)    4  lineside
 Right mouse (hold)  look around    Mouse wheel  adjust the control under the cursor (or zoom)
-+ / -  time acceleration (useful while raising steam or charging air)    F2 start-up checklist    F3 details    Esc  pause"""
++ / -  time acceleration (useful while raising steam or charging air)    F2 start-up checklist    F3 details    F4 controls on screen    Esc  pause"""
 
 
 ## Anti-aliasing, shadow resolution and LOD detail for the chosen quality.

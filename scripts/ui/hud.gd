@@ -6,6 +6,7 @@ extends CanvasLayer
 signal resume_pressed
 signal restart_pressed
 signal menu_pressed
+signal controls_pressed
 
 var tooltip: PanelContainer
 var tooltip_label: RichTextLabel
@@ -119,6 +120,11 @@ func _ready() -> void:
 		var sig: Signal = pair[1]
 		b.pressed.connect(func(): sig.emit())
 		vb.add_child(b)
+	var kb := Button.new()
+	kb.text = "Show / hide controls on screen (F4)"
+	kb.custom_minimum_size = Vector2(260, 42)
+	kb.pressed.connect(func(): controls_pressed.emit())
+	vb.add_child(kb)
 	var q := Button.new()
 	q.text = "Quit to desktop"
 	q.custom_minimum_size = Vector2(260, 42)

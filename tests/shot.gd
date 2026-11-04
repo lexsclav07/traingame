@@ -39,6 +39,8 @@ func _initialize() -> void:
 				gs.drag_timer = p[1] == "1"
 			"tutorial":
 				gs.tutorial = p[1] == "1"
+			"keys":
+				gs.show_controls = p[1] == "1"
 	game = load("res://scenes/game.tscn").instantiate()
 	root.add_child(game)
 

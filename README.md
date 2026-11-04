@@ -154,6 +154,7 @@ Press **Tutorial** in the menu. It starts the selected train cold (the Mallard w
 | 3 / 4 | outside camera (drag to orbit, scroll to zoom) / lineside camera |
 | + / − | time acceleration up to ×120 (for raising steam or charging air) |
 | F1 / F2 / F3 | help / **start-up checklist** / technical details |
+| F4 | keep the **controls on screen**: every key for the train with what each control is set to (also a menu setting, and in the pause menu) |
 | Esc | pause menu |
 
 | Key | Mariyung | Mallard | 92 class |

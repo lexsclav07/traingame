@@ -91,6 +91,16 @@ func _process(_d: float) -> bool:
 		if pb._key(i, cab.view_order[i]) != "":
 			keyed += 1
 	print("position list: %d entries, %d cab positions with a key" % [pb._buttons.size(), keyed])
+	# the on-screen controls guide: every row's control exists in this cab
+	var ko = game.keys_overlay
+	ko.visible = true
+	ko._refresh()
+	var pfx: String = game.sim._ck() if game.sim.has_method("_ck") else ""
+	for r in ko._rows():
+		if r[2] != "" and cab.c(pfx + r[2]) == null:
+			print("FAIL controls guide: no control %s" % (pfx + r[2]))
+			fails += 1
+	print("controls guide: %d rows" % ko._rows().size())
 	print("tutorial failures: %d" % fails)
 	quit(1 if fails > 0 else 0)
 	return true
